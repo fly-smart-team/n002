@@ -25,7 +25,7 @@ const CONFIG = {
     { group: 'deogi',      label: '덕이중학교',        stop: '20675', routes: ['074', '071', 'N002', '10'] },
     { group: 'daehwa',     label: '대화역 → 덕이동',   from: ['대화역'], to: '덕이', routes: ['10', 'N002', '67'] },
     { group: 'tanhyeon',   label: '탄현역 → 덕이동',   from: ['탄현역'], to: '덕이', routes: ['074', '071'] },
-    { group: 'gwangseong', label: '덕이동 → 광성교회', from: ['덕이중학교', '하이파크시티', '덕이동', '덕이'], to: '광성교회', routes: ['80', '600', '900'] },
+    { group: 'gwangseong', label: '덕이동 → 광성교회', from: ['덕이중학교', '하이파크시티', '덕이동', '덕이'], to: '광성교회', routes: ['80', '600', '900'], maxAhead: 40 },
   ],
   MAX_AHEAD: 25,              // 출발 정류장에서 목적지까지 최대 정거장 수
   ACTIVE_START: 5 * 60,       // 05:00부터
@@ -217,26 +217,40 @@ function findStopById_(stopNo, routes) {
   throw new Error(`정류장 ${stopNo}을(를) 찾지 못했습니다.`);
 }
 
-// 정류장 번호를 모를 때: 노선 경로에서 'from' 이름 정류장 → 몇 정거장 안에 'to' 이름 정류장이 나오는 쪽
+// 정류장 번호를 모를 때: 노선 경로에서 'from' 이름 정류장 → 'to' 이름 정류장이 가장 빨리 나오는 쪽
+// (같은 이름 정류장이 양방향·회차 전후로 여러 번 나오므로 목적지까지 정거장 수가 가장 적은 곳을 고름)
 function findStopOnRoute_(routeNo, trip) {
   const routes = routesNamed_(routeNo);
   if (!routes.length) { Logger.log(`[${trip.label}] 노선 ${routeNo}: 노선을 찾지 못함`); return null; }
+  const maxAhead = trip.maxAhead || CONFIG.MAX_AHEAD;
+  const seen = [];
   for (const name of trip.from) {
+    let best = null;
     for (const r of routes) {
       const sts = routeStations_(r.routeId);
+      seen.push(sts);
       for (let i = 0; i < sts.length; i++) {
         if (String(sts[i].stationName).indexOf(name) < 0) continue;
-        for (let j = i + 1; j < Math.min(sts.length, i + 1 + CONFIG.MAX_AHEAD); j++) {
+        for (let j = i + 1; j < Math.min(sts.length, i + 1 + maxAhead); j++) {
           if (String(sts[j].stationName).indexOf(trip.to) >= 0) {
-            const s = sts[i];
-            Logger.log(`[${trip.label}] 노선 ${routeNo}: ${s.stationName} (${s.mobileNo}) → ${j - i}정거장 뒤 ${sts[j].stationName}`);
-            return { no: String(s.mobileNo).trim(), id: String(s.stationId), name: s.stationName };
+            if (!best || j - i < best.n) best = { s: sts[i], t: sts[j], n: j - i };
+            break;
           }
         }
       }
     }
+    if (best) {
+      Logger.log(`[${trip.label}] 노선 ${routeNo}: ${best.s.stationName} (${best.s.mobileNo}) → ${best.n}정거장 뒤 ${best.t.stationName}`);
+      return { no: String(best.s.mobileNo).trim(), id: String(best.s.stationId), name: best.s.stationName };
+    }
   }
-  Logger.log(`[${trip.label}] 노선 ${routeNo}: '${trip.from.join('/')}' → '${trip.to}' 순서의 정류장을 찾지 못함`);
+  // 못 찾았을 때: 경로에 출발지·목적지 이름이 있는지 보여줌
+  const names = [].concat.apply([], seen).map(s => String(s.stationName));
+  const uniq = (a) => a.filter((x, i) => a.indexOf(x) === i);
+  const fromHits = uniq(names.filter(n => trip.from.some(f => n.indexOf(f) >= 0)));
+  const toHits = uniq(names.filter(n => n.indexOf(trip.to) >= 0));
+  Logger.log(`[${trip.label}] 노선 ${routeNo}: 찾지 못함 (노선 ${routes.map(r => r.routeName + '/' + (r.regionName || '')).join(', ')}) ` +
+    `출발지 후보: ${fromHits.join(', ') || '없음'} / 목적지 후보: ${toHits.join(', ') || '없음'}`);
   return null;
 }
 
