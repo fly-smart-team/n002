@@ -1,59 +1,74 @@
 /**
  * 버스 통과시각 수집기 (여러 정류장) — Google Apps Script
  *
- * 수집 정류장
- *  - 20675 덕이중학교 (하이파크시티2·3단지 방면)
- *  - 20086 대화역 (예비군훈련장·성저3·4단지 방면) — 대화역 → 덕이동 귀가 방향
+ * 수집 구간 (TRIPS)
+ *  - 덕이중학교 → 대화역·탄현역 방면 : 20675 (정류장 번호 고정)
+ *  - 대화역 → 덕이동   : 10, N002, 67
+ *  - 탄현역 → 덕이동   : 074, 071
+ *  - 덕이동 → 광성교회 : 80, 600, 900
+ *  번호를 모르는 정류장은 setup이 노선 경로에서 자동으로 찾습니다
+ *  ("출발지 이름이 들어간 정류장 → 몇 정거장 뒤 목적지 이름" 순서인 쪽).
  *
  * 사용법
  *  1) 기존 Code.gs 내용을 전부 지우고 이 코드 붙여넣기
  *  2) SERVICE_KEY에 data.go.kr 일반 인증키 입력
- *  3) 함수 선택에서 setup 실행 (정류소ID 자동 조회 + 시트 열 추가 + 트리거 재설치)
+ *  3) 함수 선택에서 setup 실행 → 로그에서 찾은 정류장 이름·번호 확인
  *  4) 웹 앱을 이미 배포했다면: 배포 → 배포 관리 → 연필 → 버전 '새 버전' → 배포
  *
- * 사용하는 data.go.kr API
- *  - 경기도_버스도착정보 조회 (수집, 실시간 웹 앱)
- *  - 경기도_버스노선 조회 (정류소ID 찾기, setup 때 1회)
+ * 하루 호출 한도(개발계정 1,000회)에 맞춰 정류장 수에 따라 수집 간격을 자동으로 늘립니다.
+ * 운영계정으로 한도를 올리면 DAILY_BUDGET만 바꾸면 됩니다.
  */
 
 const CONFIG = {
   SERVICE_KEY: '여기에_data.go.kr_인증키_입력',
-  STATIONS: [
-    { no: '20675', name: '덕이중학교', routes: ['074', '071', 'N002', '10'] },
-    { no: '20086', name: '대화역',     routes: ['10', '090', 'N002'] },
+  TRIPS: [
+    { group: 'deogi',      label: '덕이중학교',        stop: '20675', routes: ['074', '071', 'N002', '10'] },
+    { group: 'daehwa',     label: '대화역 → 덕이동',   from: ['대화역'], to: '덕이', routes: ['10', 'N002', '67'] },
+    { group: 'tanhyeon',   label: '탄현역 → 덕이동',   from: ['탄현역'], to: '덕이', routes: ['074', '071'] },
+    { group: 'gwangseong', label: '덕이동 → 광성교회', from: ['덕이중학교', '하이파크시티', '덕이동', '덕이'], to: '광성교회', routes: ['80', '600', '900'] },
   ],
+  MAX_AHEAD: 25,              // 출발 정류장에서 목적지까지 최대 정거장 수
   ACTIVE_START: 5 * 60,       // 05:00부터
   ACTIVE_END: 24 * 60 + 30,   // 다음날 00:30까지
-  EVERY_N_MIN: 3,             // 정류장 2곳 × 3분 간격 = 하루 약 780회 (한도 1,000회)
+  DAILY_BUDGET: 880,          // 수집에 쓸 하루 호출 수 (나머지는 실시간 웹 앱용)
 };
 
 const BASE = 'https://apis.data.go.kr/6410000';
 const RAW = 'raw';       // 매 호출 원본 기록
 const PASS = 'passes';   // 버스 통과 추정 시각 → 시간표의 재료
 
-// ───────── 최초 1회 / 정류장 추가 시 실행 ─────────
+// ───────── 최초 1회 / 정류장 바꿀 때 실행 ─────────
 function setup() {
   const props = PropertiesService.getScriptProperties();
-
-  // 예전 버전(덕이중학교만 수집)에서 저장한 값 이어받기
-  const legacy = props.getProperty('STATION_ID');
-  if (legacy && !props.getProperty('SID_20675')) props.setProperty('SID_20675', legacy);
+  const legacyId = props.getProperty('STATION_ID') || props.getProperty('SID_20675');
   const legacyState = props.getProperty('STATE');
   if (legacyState && !props.getProperty('STATE_20675')) props.setProperty('STATE_20675', legacyState);
 
-  CONFIG.STATIONS.forEach(st => {
-    if (!props.getProperty('SID_' + st.no)) {
-      props.setProperty('SID_' + st.no, findStationIdByRoute_(st));
-    } else {
-      Logger.log(`${st.name}(${st.no}) stationId=${props.getProperty('SID_' + st.no)} (저장된 값 사용)`);
+  // 정류장 찾기 → 같은 정류장은 하나로 합침
+  const stations = {};
+  CONFIG.TRIPS.forEach(trip => {
+    if (trip.stop) {
+      const id = trip.stop === '20675' && legacyId ? legacyId : findStopById_(trip.stop, trip.routes);
+      addStation_(stations, { no: trip.stop, id, name: trip.label }, trip, trip.routes);
+      return;
     }
+    trip.routes.forEach(routeNo => {
+      const hit = findStopOnRoute_(routeNo, trip);
+      if (hit) addStation_(stations, hit, trip, [routeNo]);
+    });
   });
+  const list = Object.keys(stations).map(k => stations[k]);
+  props.setProperty('STATIONS', JSON.stringify(list));
+
+  const interval = intervalFor_(list.length);
+  Logger.log('──────── 수집할 정류장 ────────');
+  list.forEach(st => Logger.log(`${st.no} ${st.name} (id ${st.id}) · ${st.groups.join(', ')} · 노선 ${st.routes.join(', ')}`));
+  Logger.log(`정류장 ${list.length}곳, 각 ${interval}분 간격 → 하루 약 ${Math.round(list.length * (CONFIG.ACTIVE_END - CONFIG.ACTIVE_START) / interval)}회`);
 
   const ss = SpreadsheetApp.getActive();
   sheet_(ss, RAW, ['시각', '요일', '노선', '차량1', '도착예정1(분)', '정류장전1',
                    '차량2', '도착예정2(분)', '정류장전2', '정류장']);
   sheet_(ss, PASS, ['날짜', '요일', '노선', '차량번호', '통과추정시각', '마지막관측시각', '마지막예정(분)', '정류장']);
-  // 예전 시트에 '정류장' 열 제목 추가 (기존 행은 비어 있음 = 덕이중학교)
   [[RAW, 10], [PASS, 8]].forEach(([name, col]) => {
     const sh = ss.getSheetByName(name);
     if (!sh.getRange(1, col).getValue()) sh.getRange(1, col).setValue('정류장');
@@ -61,30 +76,39 @@ function setup() {
 
   ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('poll').timeBased().everyMinutes(1).create();
-  Logger.log('설치 완료. 정류장 ' + CONFIG.STATIONS.length + '곳을 ' + CONFIG.EVERY_N_MIN + '분 간격으로 수집합니다.');
+  Logger.log('설치 완료.');
   poll(true);
 }
 
+function addStation_(stations, hit, trip, routes) {
+  const st = stations[hit.id] || (stations[hit.id] = { no: hit.no, id: hit.id, name: hit.name, groups: [], routes: [] });
+  if (st.groups.indexOf(trip.group) < 0) st.groups.push(trip.group);
+  routes.forEach(r => { if (st.routes.indexOf(r) < 0) st.routes.push(r); });
+}
+
+function intervalFor_(n) {
+  return Math.max(2, Math.ceil(n * (CONFIG.ACTIVE_END - CONFIG.ACTIVE_START) / CONFIG.DAILY_BUDGET));
+}
+
 // ───────── 트리거가 1분마다 호출 ─────────
+// 정류장마다 시작 분을 엇갈려서 한 번에 몰리지 않게 함
 function poll(force) {
   const now = new Date();
   const mins = now.getHours() * 60 + now.getMinutes();
-  const m = mins < 3 * 60 ? mins + 24 * 60 : mins;            // 자정 넘김 처리
-  if (force !== true) {
-    if (m < CONFIG.ACTIVE_START || m > CONFIG.ACTIVE_END) return;
-    if (mins % CONFIG.EVERY_N_MIN !== 0) return;
-  }
-  CONFIG.STATIONS.forEach(st => {
+  const m = mins < 3 * 60 ? mins + 24 * 60 : mins;
+  const list = JSON.parse(PropertiesService.getScriptProperties().getProperty('STATIONS') || '[]');
+  if (!list.length) { Logger.log('정류장 목록이 없습니다. setup을 실행하세요.'); return; }
+  const interval = intervalFor_(list.length);
+  if (force !== true && (m < CONFIG.ACTIVE_START || m > CONFIG.ACTIVE_END)) return;
+  list.forEach((st, k) => {
+    if (force !== true && mins % interval !== k % interval) return;
     try { pollStation_(st, now); } catch (e) { Logger.log(`${st.name} 오류: ${e}`); }
   });
 }
 
 function pollStation_(st, now) {
   const props = PropertiesService.getScriptProperties();
-  const stationId = props.getProperty('SID_' + st.no);
-  if (!stationId) { Logger.log(`${st.name}: stationId 없음. setup을 실행하세요.`); return; }
-
-  const list = fetchArrivals_(stationId);
+  const list = fetchArrivals_(st.id);
   if (list === null) return;
 
   const ss = SpreadsheetApp.getActive();
@@ -137,15 +161,16 @@ function pollStation_(st, now) {
 // 주소 뒤에 ?stop=20086 을 붙이면 대화역, 없으면 덕이중학교.
 // 정류장별 30초 캐시로 API 호출량을 제한합니다.
 function doGet(e) {
-  const no = (e && e.parameter && e.parameter.stop) || CONFIG.STATIONS[0].no;
-  const st = CONFIG.STATIONS.find(s => s.no === no);
+  const all = JSON.parse(PropertiesService.getScriptProperties().getProperty('STATIONS') || '[]');
+  const no = (e && e.parameter && e.parameter.stop) || '20675';
+  if (no === 'list') return json_({ ok: true, stations: all.map(s => ({ no: s.no, name: s.name, groups: s.groups, routes: s.routes })) });
+  const st = all.find(s => s.no === no);
   if (!st) return json_({ ok: false, error: 'unknown stop' });
 
   const cache = CacheService.getScriptCache();
   let json = cache.get('live_' + no);
   if (!json) {
-    const stationId = PropertiesService.getScriptProperties().getProperty('SID_' + no);
-    const list = stationId ? fetchArrivals_(stationId) : null;
+    const list = fetchArrivals_(st.id);
     json = JSON.stringify({
       stop: no,
       name: st.name,
@@ -162,33 +187,57 @@ function doGet(e) {
   return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
 }
 
-// ───────── 정류소ID 찾기: '버스노선 조회' API 사용 ─────────
-// 이 정류장을 지나는 노선의 정류소 목록에서 표시번호가 일치하는 곳을 찾음
-function findStationIdByRoute_(st) {
-  const key = encodeURIComponent(CONFIG.SERVICE_KEY);
-  for (const routeNo of st.routes) {
-    const listUrl = `${BASE}/busrouteservice/v2/getBusRouteListv2` +
-      `?serviceKey=${key}&keyword=${encodeURIComponent(routeNo)}&format=json`;
-    const lb = fetchJson_(listUrl);
-    const routes = asArray_(lb && lb.response && lb.response.msgBody &&
-                            lb.response.msgBody.busRouteList)
-      .filter(r => String(r.routeName).trim() === routeNo);
-    Logger.log(`${st.name} / 노선 ${routeNo}: 후보 ${routes.length}개`);
+// ───────── 정류장 찾기: '버스노선 조회' API 사용 ─────────
+function routesNamed_(routeNo) {
+  const url = `${BASE}/busrouteservice/v2/getBusRouteListv2` +
+    `?serviceKey=${encodeURIComponent(CONFIG.SERVICE_KEY)}&keyword=${encodeURIComponent(routeNo)}&format=json`;
+  const lb = fetchJson_(url);
+  const all = asArray_(lb && lb.response && lb.response.msgBody && lb.response.msgBody.busRouteList)
+    .filter(r => String(r.routeName).trim() === routeNo);
+  const goyang = all.filter(r => String(r.regionName || '').indexOf('고양') >= 0);
+  return goyang.length ? goyang : all;
+}
 
+function routeStations_(routeId) {
+  const url = `${BASE}/busrouteservice/v2/getBusRouteStationListv2` +
+    `?serviceKey=${encodeURIComponent(CONFIG.SERVICE_KEY)}&routeId=${routeId}&format=json`;
+  const sb = fetchJson_(url);
+  return asArray_(sb && sb.response && sb.response.msgBody && sb.response.msgBody.busRouteStationList)
+    .sort((a, b) => Number(a.stationSeq) - Number(b.stationSeq));
+}
+
+// 정류장 번호를 알 때: 그 번호가 있는 노선에서 stationId를 찾음
+function findStopById_(stopNo, routes) {
+  for (const routeNo of routes) {
+    for (const r of routesNamed_(routeNo)) {
+      const hit = routeStations_(r.routeId).find(s => String(s.mobileNo).trim() === stopNo);
+      if (hit) { Logger.log(`정류장 ${stopNo}: ${hit.stationName} (노선 ${routeNo})`); return String(hit.stationId); }
+    }
+  }
+  throw new Error(`정류장 ${stopNo}을(를) 찾지 못했습니다.`);
+}
+
+// 정류장 번호를 모를 때: 노선 경로에서 'from' 이름 정류장 → 몇 정거장 안에 'to' 이름 정류장이 나오는 쪽
+function findStopOnRoute_(routeNo, trip) {
+  const routes = routesNamed_(routeNo);
+  if (!routes.length) { Logger.log(`[${trip.label}] 노선 ${routeNo}: 노선을 찾지 못함`); return null; }
+  for (const name of trip.from) {
     for (const r of routes) {
-      const stUrl = `${BASE}/busrouteservice/v2/getBusRouteStationListv2` +
-        `?serviceKey=${key}&routeId=${r.routeId}&format=json`;
-      const sb = fetchJson_(stUrl);
-      const stations = asArray_(sb && sb.response && sb.response.msgBody &&
-                                sb.response.msgBody.busRouteStationList);
-      const hit = stations.find(s => String(s.mobileNo).trim() === st.no);
-      if (hit) {
-        Logger.log(`정류소: ${hit.stationName} / stationId=${hit.stationId} (노선 ${routeNo}, ${r.regionName || ''})`);
-        return String(hit.stationId);
+      const sts = routeStations_(r.routeId);
+      for (let i = 0; i < sts.length; i++) {
+        if (String(sts[i].stationName).indexOf(name) < 0) continue;
+        for (let j = i + 1; j < Math.min(sts.length, i + 1 + CONFIG.MAX_AHEAD); j++) {
+          if (String(sts[j].stationName).indexOf(trip.to) >= 0) {
+            const s = sts[i];
+            Logger.log(`[${trip.label}] 노선 ${routeNo}: ${s.stationName} (${s.mobileNo}) → ${j - i}정거장 뒤 ${sts[j].stationName}`);
+            return { no: String(s.mobileNo).trim(), id: String(s.stationId), name: s.stationName };
+          }
+        }
       }
     }
   }
-  throw new Error(`${st.name}(${st.no}) 정류소를 찾지 못했습니다. 위 로그를 캡처해서 보내주세요.`);
+  Logger.log(`[${trip.label}] 노선 ${routeNo}: '${trip.from.join('/')}' → '${trip.to}' 순서의 정류장을 찾지 못함`);
+  return null;
 }
 
 // ───────── 보조 함수 ─────────
