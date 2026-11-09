@@ -138,6 +138,34 @@ function findStationIdByRoute_() {
   throw new Error('정류소를 찾지 못했습니다. 위 로그를 캡처해서 보내주세요.');
 }
 
+// ───────── 실시간 도착정보 웹 앱 (시간표 페이지가 30초마다 호출) ─────────
+// 배포 → 새 배포 → 유형: 웹 앱 → 실행: 나 / 액세스: 모든 사용자
+// 30초 캐시로 API 호출량을 제한합니다 (페이지를 열어둔 동안 최대 분당 2회).
+function doGet() {
+  const cache = CacheService.getScriptCache();
+  let json = cache.get('live');
+  if (!json) {
+    const stationId = PropertiesService.getScriptProperties().getProperty('STATION_ID');
+    const url = `${BASE}/busarrivalservice/v2/getBusArrivalListv2` +
+      `?serviceKey=${encodeURIComponent(CONFIG.SERVICE_KEY)}` +
+      `&stationId=${stationId}&format=json`;
+    const body = fetchJson_(url);
+    const list = asArray_(body && body.response && body.response.msgBody &&
+                          body.response.msgBody.busArrivalList);
+    json = JSON.stringify({
+      updated: Utilities.formatDate(new Date(), 'Asia/Seoul', "yyyy-MM-dd'T'HH:mm:ssXXX"),
+      ok: !!body,
+      buses: list.map(b => ({
+        route: String(b.routeName),
+        predict1: num_(b.predictTime1), stops1: num_(b.locationNo1),
+        predict2: num_(b.predictTime2), stops2: num_(b.locationNo2),
+      })),
+    });
+    if (body) cache.put('live', json, 30);
+  }
+  return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+}
+
 // ───────── 보조 함수 ─────────
 function passRow_(route, prev, now) {
   // 통과시각 ≈ 마지막 관측시각 + 그때의 도착예정(분), 단 현재 시각을 넘지 않게

@@ -49,6 +49,12 @@ h1{margin:0;font-size:26px;font-weight:700;text-wrap:balance}
 .brow .to{font-size:13px;color:var(--muted);min-width:0}
 .brow .tm{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:17px;font-weight:600;text-align:right}
 .brow .tm small{font-family:var(--font-body);font-weight:400;font-size:12px;color:var(--muted);margin-left:6px}
+.tag{display:inline-block;font-size:11px;line-height:1;padding:3px 6px;border-radius:5px;margin-left:6px;vertical-align:1px;background:var(--soft);color:var(--muted)}
+.tag.live{background:var(--rc);color:var(--surface)}
+.brow .tm .st{display:block;font-family:var(--font-body);font-weight:500;font-size:12px;color:var(--rc);margin:0;text-align:right}
+.livebar{display:flex;gap:10px;flex-wrap:wrap;padding:14px 16px;border-bottom:1px solid var(--line);align-items:baseline}
+.livebar .lbl{font-size:12px;color:var(--muted);letter-spacing:.04em;width:100%}
+.livestat{font-size:12px;color:var(--muted)}
 .dirs button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .routes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .routes button{font:inherit;cursor:pointer;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);
@@ -127,6 +133,7 @@ section.about ul{margin:0;padding-left:18px;display:flex;flex-direction:column;g
       </div>
       <div class="today" id="today"></div>
     </div>
+    <div class="livebar" id="livebar" hidden></div>
     <div class="next" id="next"></div>
     <div class="stats" id="stats"></div>
     <div class="grid" id="grid"></div>
@@ -190,6 +197,23 @@ const DIRS = [
   { id:'daehwa', name:'대화역 방면', sub:'N002 · 10번', routes:['N002','10'] },
   { id:'tanhyeon', name:'탄현역 방면', sub:'074 후곡 · 071 일산시장', routes:['074','071'] },
 ];
+// 실시간 도착정보: Google Apps Script 웹 앱 주소 (인증키는 Apps Script 안에만 있음)
+const LIVE_URL = '';
+const LIVE = { data:null, at:0, err:false };
+const norm = (x) => String(x).replace(/^0+/, '');
+function liveFor(rr){
+  if (!LIVE.data || Date.now()-LIVE.at > 5*60e3) return null;
+  const b = (LIVE.data.buses||[]).find(x => norm(x.route) === norm(rr.key||rr.id));
+  if (!b) return [];
+  return [[b.predict1,b.stops1],[b.predict2,b.stops2]].filter(([p])=>p!=='' && p!=null).map(([p,s])=>({ m:Number(p), stops:Number(s) }));
+}
+const whenTxt = (m) => m<=1 ? '곧 도착' : m+'분 후';
+async function pullLive(){
+  if (!LIVE_URL) return;
+  try { const res = await fetch(LIVE_URL, { cache:'no-store' }); LIVE.data = await res.json(); LIVE.at = Date.now(); LIVE.err = false; }
+  catch(e){ LIVE.err = true; }
+  render();
+}
 const HOLIDAYS = ['2026-12-25','2027-01-01']; // 주말 시간표로 표시 (추정)
 
 const $ = (id) => document.getElementById(id);
@@ -216,17 +240,25 @@ function render(){
   const d = DIRS.find(x=>x.id===r.dir);
   $('dirs').innerHTML = DIRS.map(x=>`<button type="button" id="dir-${x.id}" data-d="${x.id}" aria-pressed="${x.id===d.id}"><b>${x.name}</b><span>${x.sub}</span></button>`).join('');
   const up = [];
-  d.routes.forEach(id=>{ const rr = ROUTES.find(x=>x.id===id);
-    rr[now.dt].filter(x=>x.l!=='o' && toMin(x.t)>=now.min).slice(0,3).forEach(x=>up.push({rr,t:x.t})); });
-  up.sort((a,b)=>toMin(a.t)-toMin(b.t));
+  d.routes.forEach(id=>{ const rr = ROUTES.find(x=>x.id===id); const lv = liveFor(rr);
+    if (lv && lv.length) lv.forEach(b=>up.push({rr, m:b.m, stops:b.stops, live:true}));
+    else rr[now.dt].filter(x=>x.l!=='o' && toMin(x.t)>=now.min).slice(0,3).forEach(x=>up.push({rr, t:x.t, m:toMin(x.t)-now.min})); });
+  up.sort((a,b)=>a.m-b.m);
   $('board').innerHTML = `<span class="lbl">${d.name} · 지금 정류장에 올 버스</span>` + (up.length ? up.slice(0,4).map(x=>{
-      const m = toMin(x.t)-now.min;
-      return `<div class="brow" style="--rc:var(${x.rr.color})"><span class="rn">${x.rr.id}</span><span class="to">${x.rr.to}</span><span class="tm">${x.t}<small>${m===0?'곧':m+'분 후'}</small></span></div>`;}).join('')
+      if (x.live) return `<div class="brow" style="--rc:var(${x.rr.color})"><span class="rn">${x.rr.id}</span><span class="to">${x.rr.to}<span class="tag live">실시간</span></span><span class="tm">${whenTxt(x.m)}<span class="st">${x.stops}번째 전</span></span></div>`;
+      return `<div class="brow" style="--rc:var(${x.rr.color})"><span class="rn">${x.rr.id}</span><span class="to">${x.rr.to}<span class="tag">시간표</span></span><span class="tm">${x.t}<small>${x.m===0?'곧':x.m+'분 후'}</small></span></div>`;}).join('')
     : `<div class="brow"><span class="to" style="grid-column:1/-1">오늘 운행이 끝났습니다.</span></div>`);
   $('routes').innerHTML = d.routes.map(id=>ROUTES.find(x=>x.id===id)).map(x=>`<button type="button" id="rt-${x.id}" data-r="${x.id}" aria-pressed="${x.id===r.id}" style="--rc:var(${x.color})"><span class="no">${x.id}</span><span class="kind">${x.to}</span></button>`).join('');
   $('seg-wk').setAttribute('aria-pressed', dt==='wk'); $('seg-we').setAttribute('aria-pressed', dt==='we');
   const isToday = dt===now.dt;
   $('today').textContent = `오늘 ${now.label}` + (now.hol ? ' · 공휴일(주말 시간표 추정)' : '') + (isToday ? '' : ' · 다른 요일 보는 중');
+
+  const lvR = liveFor(r);
+  $('livebar').hidden = !LIVE_URL;
+  if (LIVE_URL) $('livebar').innerHTML = `<span class="lbl">실시간 도착</span>` + (
+    lvR === null ? `<span class="livestat">${LIVE.err ? '실시간 정보를 불러오지 못했습니다. 아래 시간표를 참고하세요.' : '불러오는 중…'}</span>`
+    : !lvR.length ? `<span class="livestat">지금은 도착 정보가 없습니다.</span>`
+    : lvR.map((b,i)=>`<span class="chip${i===0?' first':''}">${b.stops}번째 전<small>${whenTxt(b.m)}</small></span>`).join(''));
 
   const list = r[dt];
   const upcoming = isToday ? list.filter(x=>toMin(x.t)>=now.min) : [];
@@ -269,7 +301,10 @@ $('routes').addEventListener('click', e=>{ const b = e.target.closest('button[da
 document.querySelector('.seg').addEventListener('click', e=>{ const b = e.target.closest('button[data-dt]'); if(!b) return;
   state.dt = b.dataset.dt===seoulNow().dt ? null : b.dataset.dt; render(); });
 render();
+pullLive();
+setInterval(pullLive, 30000);
 setInterval(render, 30000);
+document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) pullLive(); });
 </script>
 </body>
 </html>
