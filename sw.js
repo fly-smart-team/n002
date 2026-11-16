@@ -1,5 +1,5 @@
 // 하이파크시티 BUS — 오프라인에서도 시간표가 열리도록 앱 파일을 저장
-const CACHE = 'hipark-bus-v1';
+const CACHE = 'hipark-bus-v2';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

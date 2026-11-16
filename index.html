@@ -77,6 +77,23 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .pill{font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;border:1px solid var(--line);color:var(--muted)}
 .pill.live{border-color:transparent;background:rgb(74 222 128 / .15);color:var(--live)}
 .pill.live::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--live);margin-right:5px;vertical-align:1px}
+.lead{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px}
+.bigno{font-size:44px;font-weight:900;line-height:1;padding:10px 16px;border-radius:16px;background:var(--rc);color:#0b1120;letter-spacing:-.02em}
+.bigmin{font-size:64px;font-weight:900;line-height:1;color:var(--accent);letter-spacing:-.03em}
+.bigmin small{font-size:26px;font-weight:700;margin-left:4px}
+.stopsaway{font-size:16px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:8px;margin-top:4px}
+.stopsaway.on{color:var(--live);font-size:22px;font-weight:700}
+.stopsaway i{width:10px;height:10px;border-radius:50%;background:var(--live);box-shadow:0 0 0 4px rgb(74 222 128 / .2)}
+.say{font-size:15px;color:var(--muted)}
+.say b{color:var(--ink)}
+.small{font-size:13px;color:var(--dim)}
+.mrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.midno{font-size:22px;font-weight:900;line-height:1;padding:6px 10px;border-radius:10px;background:var(--rc);color:#0b1120}
+.midmin{font-size:30px;font-weight:900;line-height:1.1;color:var(--ink)}
+.midmin small{font-size:15px;font-weight:700;margin-left:2px;color:var(--muted)}
+.mini .s.on{color:var(--live)}
+@media (prefers-reduced-motion:no-preference){.stopsaway i{animation:pulse 1.6s ease-in-out infinite}}
+@keyframes pulse{50%{box-shadow:0 0 0 7px rgb(74 222 128 / 0)}}
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 .mini{background:var(--card2);border-radius:18px;padding:14px 14px 13px;display:flex;flex-direction:column;gap:4px;min-width:0}
 .mini .k{color:var(--muted);font-size:13px}
@@ -346,14 +363,20 @@ function render(){
   const [a, b, c] = up;
   let h = `<span class="lbl">${S.name} 출발 · ${d.name}</span>`;
   if (a) {
-    const left = a.live ? null : Math.max(0, (toMin(a.t)-now.min)*60 - now.sec);
-    h += `<div class="row">${badge(a.rr)}<span class="sub">${a.rr.to}</span></div>
-      <div class="big num">${timeOf(a, now)}</div>
-      <div class="when">${a.m<=1?'곧 도착':a.m+'분 후'}</div>
-      <div class="sub">${srcPill(a)}${left!=null?`<span class="num">남은 시간 ${String(left/60|0).padStart(2,'0')}:${String(left%60).padStart(2,'0')}</span>`:''}</div>
-      <div class="pair">${[b,c].map((x,i)=> x ? `<div class="mini"><span class="k">${i?'다다음':'그 다음'}</span>
-        <div class="row" style="gap:8px">${badge(x.rr,true)}<span class="t num">${timeOf(x, now)}</span></div>
-        <span class="s">${x.m<=1?'곧 도착':x.m+'분 후'} · ${x.live?`${x.stops}정거장 전`:(x.rr.official?'시간표':'예상')}</span></div>` : `<div class="mini"><span class="k">${i?'다다음':'그 다음'}</span><span class="s">정보 없음</span></div>`).join('')}</div>`;
+    const mins = (x) => x.m<=1 ? '곧 도착' : `${x.m}<small>분 후</small>`;
+    const where = (x) => x.live ? `${x.stops}정거장 전` : (x.rr.official ? '시간표 기준' : '통계 예상');
+    h += `<div class="lead">
+        <span class="bigno" style="--rc:var(${a.rr.color})">${rno(a.rr)}</span>
+        <span class="bigmin num">${mins(a)}</span>
+      </div>
+      <div class="stopsaway${a.live?' on':''}">${a.live?'<i></i>':''}${where(a)}</div>
+      <div class="say">${a.m<=1?'지금 곧 오는':`${a.m}분 후 오는`} <b>${rno(a.rr)}번</b> 타면 됩니다 · ${a.rr.to}</div>
+      <div class="small num">도착 예정 ${timeOf(a, now)}${a.live?'':` · 남은 시간 ${(()=>{const l=Math.max(0,(toMin(a.t)-now.min)*60-now.sec);return String(l/60|0).padStart(2,'0')+':'+String(l%60).padStart(2,'0');})()}`}</div>
+      <div class="pair">${[b,c].map((x,i)=> x ? `<div class="mini">
+        <span class="k">${i?'다다음':'그 다음'}</span>
+        <div class="mrow"><span class="midno" style="--rc:var(${x.rr.color})">${rno(x.rr)}</span><span class="midmin num">${mins(x)}</span></div>
+        <span class="s${x.live?' on':''}">${where(x)} · ${timeOf(x, now)}</span></div>`
+        : `<div class="mini"><span class="k">${i?'다다음':'그 다음'}</span><span class="s">정보 없음</span></div>`).join('')}</div>`;
   } else {
     h += `<div class="empty">${fq.length ? '지금 실시간 정보가 없습니다. 아래 배차 간격을 참고하세요.' : '오늘 운행이 끝났거나 도착 정보가 없습니다.'}</div>`;
   }
