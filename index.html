@@ -200,7 +200,7 @@ const DIRS = [
   { id:'tanhyeon', name:'탄현역 방면', sub:'074 후곡 · 071 일산시장', routes:['074','071'] },
 ];
 // 실시간 도착정보: Google Apps Script 웹 앱 주소 (인증키는 Apps Script 안에만 있음)
-const LIVE_URL = '';
+const LIVE_URL = 'https://script.google.com/macros/s/AKfycbzVUADfsjRAPQJxMVhtHUcnL3Ju1MFbRHf4Tg3fFbYEXVdAUyExJjeTHiZxw4vz2x8W4A/exec?stop=20675';
 const LIVE = { data:null, at:0, err:false };
 const norm = (x) => String(x).replace(/^0+/, '');
 function liveFor(rr){
