@@ -10,6 +10,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
 body{margin:0}
+[hidden]{display:none!important}
+.brow .tm.lv,.chip.lv{font-family:var(--font-body);font-weight:700}
 /* Layout: 정류장 표지판처럼 위에 정류장 정보, 노선 탭, '시 | 분' 시각표 격자 */
 :root{
   --bg:#f3f5f2; --surface:#ffffff; --ink:#1b2420; --muted:#66716b; --line:#dde3de;
@@ -202,12 +204,14 @@ const LIVE_URL = '';
 const LIVE = { data:null, at:0, err:false };
 const norm = (x) => String(x).replace(/^0+/, '');
 function liveFor(rr){
+  if (rr.official) return null;   // 074번: 실시간 정보가 자주 끊겨 시간표로 표시
   if (!LIVE.data || Date.now()-LIVE.at > 5*60e3) return null;
   const b = (LIVE.data.buses||[]).find(x => norm(x.route) === norm(rr.key||rr.id));
   if (!b) return [];
   return [[b.predict1,b.stops1],[b.predict2,b.stops2]].filter(([p])=>p!=='' && p!=null).map(([p,s])=>({ m:Number(p), stops:Number(s) }));
 }
-const whenTxt = (m) => m<=1 ? '곧 도착' : m+'분 후';
+const whenTxt = (m) => m<=1 ? '곧 도착' : `도착 예정 ${m}분`;
+const stopTxt = (n) => `${n}정거장 전`;
 async function pullLive(){
   if (!LIVE_URL) return;
   try { const res = await fetch(LIVE_URL, { cache:'no-store' }); LIVE.data = await res.json(); LIVE.at = Date.now(); LIVE.err = false; }
@@ -245,7 +249,7 @@ function render(){
     else rr[now.dt].filter(x=>x.l!=='o' && toMin(x.t)>=now.min).slice(0,3).forEach(x=>up.push({rr, t:x.t, m:toMin(x.t)-now.min})); });
   up.sort((a,b)=>a.m-b.m);
   $('board').innerHTML = `<span class="lbl">${d.name} · 지금 정류장에 올 버스</span>` + (up.length ? up.slice(0,4).map(x=>{
-      if (x.live) return `<div class="brow" style="--rc:var(${x.rr.color})"><span class="rn">${x.rr.id}</span><span class="to">${x.rr.to}<span class="tag live">실시간</span></span><span class="tm">${whenTxt(x.m)}<span class="st">${x.stops}번째 전</span></span></div>`;
+      if (x.live) return `<div class="brow" style="--rc:var(${x.rr.color})"><span class="rn">${x.rr.id}</span><span class="to">${x.rr.to}<span class="tag live">실시간</span></span><span class="tm lv">${whenTxt(x.m)}<span class="st">${stopTxt(x.stops)}</span></span></div>`;
       return `<div class="brow" style="--rc:var(${x.rr.color})"><span class="rn">${x.rr.id}</span><span class="to">${x.rr.to}<span class="tag">시간표</span></span><span class="tm">${x.t}<small>${x.m===0?'곧':x.m+'분 후'}</small></span></div>`;}).join('')
     : `<div class="brow"><span class="to" style="grid-column:1/-1">오늘 운행이 끝났습니다.</span></div>`);
   $('routes').innerHTML = d.routes.map(id=>ROUTES.find(x=>x.id===id)).map(x=>`<button type="button" id="rt-${x.id}" data-r="${x.id}" aria-pressed="${x.id===r.id}" style="--rc:var(${x.color})"><span class="no">${x.id}</span><span class="kind">${x.to}</span></button>`).join('');
@@ -254,11 +258,11 @@ function render(){
   $('today').textContent = `오늘 ${now.label}` + (now.hol ? ' · 공휴일(주말 시간표 추정)' : '') + (isToday ? '' : ' · 다른 요일 보는 중');
 
   const lvR = liveFor(r);
-  $('livebar').hidden = !LIVE_URL;
-  if (LIVE_URL) $('livebar').innerHTML = `<span class="lbl">실시간 도착</span>` + (
+  $('livebar').hidden = !LIVE_URL || !!r.official;
+  if (LIVE_URL && !r.official) $('livebar').innerHTML = `<span class="lbl">실시간 도착</span>` + (
     lvR === null ? `<span class="livestat">${LIVE.err ? '실시간 정보를 불러오지 못했습니다. 아래 시간표를 참고하세요.' : '불러오는 중…'}</span>`
     : !lvR.length ? `<span class="livestat">지금은 도착 정보가 없습니다.</span>`
-    : lvR.map((b,i)=>`<span class="chip${i===0?' first':''}">${b.stops}번째 전<small>${whenTxt(b.m)}</small></span>`).join(''));
+    : lvR.map((b,i)=>`<span class="chip lv${i===0?' first':''}">${stopTxt(b.stops)}<small>${whenTxt(b.m)}</small></span>`).join(''));
 
   const list = r[dt];
   const upcoming = isToday ? list.filter(x=>toMin(x.t)>=now.min) : [];
