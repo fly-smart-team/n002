@@ -36,6 +36,12 @@ header{display:flex;flex-direction:column;gap:2px}
 h1{margin:0;font-size:26px;font-weight:700;text-wrap:balance}
 .dir{color:var(--muted);font-size:14px}
 
+.stops{display:flex;gap:6px;border-bottom:1px solid var(--line)}
+.stops button{font:inherit;font-size:15px;cursor:pointer;border:0;background:transparent;color:var(--muted);padding:8px 4px 10px;margin-right:14px;border-bottom:2.5px solid transparent;margin-bottom:-1px}
+.stops button[aria-pressed="true"]{color:var(--ink);font-weight:700;border-bottom-color:var(--ink)}
+.stops button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.m .fq{font-family:var(--font-body);font-size:14px;color:var(--ink)}
+.m .fq b{font-family:var(--font-num);font-weight:600;color:var(--rc)}
 .dirs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .dirs button{font:inherit;cursor:pointer;text-align:left;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);
   border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -58,7 +64,7 @@ h1{margin:0;font-size:26px;font-weight:700;text-wrap:balance}
 .livebar .lbl{font-size:12px;color:var(--muted);letter-spacing:.04em;width:100%}
 .livestat{font-size:12px;color:var(--muted)}
 .dirs button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
-.routes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.routes{display:grid;grid-template-columns:repeat(var(--cols,2),minmax(0,1fr));gap:8px}
 .routes button{font:inherit;cursor:pointer;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);
   border-radius:10px;padding:8px 12px;display:flex;flex-direction:column;align-items:flex-start;gap:0;min-width:0}
 .routes button .no{font-family:var(--font-num);font-weight:600;font-size:18px;color:var(--rc)}
@@ -118,10 +124,12 @@ section.about ul{margin:0;padding-left:18px;display:flex;flex-direction:column;g
 
 <div class="wrap">
   <header>
-    <div class="stopno">20675 · 경기 고양</div>
-    <h1>덕이중학교</h1>
-    <div class="dir">대화역 방면 · 탄현역 방면 · 실측 통계 + 공식 시간표</div>
+    <div class="stopno" id="stopno">20675 · 경기 고양</div>
+    <h1 id="stopname">덕이중학교</h1>
+    <div class="dir" id="stopdir">대화역 방면 · 탄현역 방면</div>
   </header>
+
+  <nav class="stops" id="stops" aria-label="정류장 선택"></nav>
 
   <nav class="dirs" id="dirs" aria-label="방면 선택"></nav>
   <div class="board" id="board"></div>
@@ -139,7 +147,7 @@ section.about ul{margin:0;padding-left:18px;display:flex;flex-direction:column;g
     <div class="next" id="next"></div>
     <div class="stats" id="stats"></div>
     <div class="grid" id="grid"></div>
-    <div class="legend">
+    <div class="legend" id="legend">
       <span><i>06:07</i> 매일 같은 시각 (±2분)</span>
       <span><i class="v">06:13</i> 대부분 운행, 시각 변동 있음</span>
       <span><i class="o">12:40</i> 일부 날만 관측</span>
@@ -152,6 +160,7 @@ section.about ul{margin:0;padding-left:18px;display:flex;flex-direction:column;g
     <ul>
       <li>2026년 11월 1일(일) 18시 ~ 11월 9일(월) 08시, 2분 간격으로 버스도착정보를 수집해 정류장 통과 시각을 추정했습니다. 평일 5일, 토요일 1일, 일요일 1일 분량입니다.</li>
       <li>통과 시각 오차는 약 1~2분입니다. 버스는 시각보다 2~3분 일찍 나가 계시는 게 안전합니다.</li>
+      <li>대화역(20086) 시간표는 2026년 11월 10일~16일 수집분(평일 4일, 토·일 각 1일)으로 만들었습니다. N002·80번은 시각표로, 배차가 잦거나 시각이 들쭉날쭉한 10·67·600·1500번은 시간대별 배차 간격으로 보여줍니다.</li>
       <li>N002·10번은 대화역 방면, 074번(탄현역·후곡)과 071번(탄현역·일산시장)은 탄현역 방면입니다.</li>
       <li>074번은 정류장에 게시된 공식 시간표를 사용합니다. 나머지 노선은 실측 통계입니다.</li>
       <li>토요일과 일요일은 N002·10·71 모두 거의 같은 시각에 운행해 하나의 주말 시간표로 묶었습니다. 074번도 토·일·공휴일 시간표가 같습니다.</li>
@@ -164,21 +173,21 @@ section.about ul{margin:0;padding-left:18px;display:flex;flex-direction:column;g
 // 레벨: r = 매일 같은 시각, v = 대부분 운행·시각 변동, o = 일부 날만 관측
 const R = (s) => s.trim().split(/\s+/).map(x => { const [t,l] = x.split('/'); return { t, l: l || 'r' }; });
 const ROUTES = [
-  { id:'N002', kind:'마을버스', to:'대화역', dir:'daehwa', color:'--village',
+  { stop:'20675', id:'N002', kind:'마을버스', to:'대화역', dir:'daehwa', color:'--village',
     wk: R(`06:07 06:25 06:47 07:08 07:31 07:51 08:11 08:35 08:57 09:17 09:37 09:56 10:29 11:06 12:25 13:17 13:56 14:41 14:57 15:15 15:37 15:55 16:25 16:47 17:01 17:36 18:13 18:27 18:47 19:04 19:45 20:17 20:54 21:21 21:45 22:06/v 22:24 22:45`),
     we: R(`06:26 07:05 07:50 08:32/v 09:16 09:56 10:47 13:06 13:56 14:36 15:16 15:56 16:47 17:28 18:16 18:56 19:40 21:21 22:05 22:49/v`),
     buses:{wk:'4대', we:'2대'},
     note:{
       wk:'가장 규칙적인 노선입니다. 5일 모두 같은 시각에 ±2분 이내로 통과했습니다. 10~13시는 약 40~80분 간격으로 뜸합니다.',
       we:'토요일과 일요일 시각이 1~2분 차이로 같습니다. 10:47 다음 차는 13:06, 19:40 다음 차는 21:21로 공백이 깁니다.' } },
-  { id:'10', kind:'일반버스', to:'대화역', dir:'daehwa', color:'--city',
+  { stop:'20675', id:'10', kind:'일반버스', to:'대화역', dir:'daehwa', color:'--city',
     wk: R(`05:59 06:18 06:59 07:39 08:19/v 08:49 09:19 09:41 10:06 10:29 10:55 11:27 11:58 12:28 13:03 13:33 14:01 14:37/v 15:00 15:29 16:01 16:40 17:12 17:55 18:27 18:53 19:28 19:57 20:13 20:31 20:48 21:23 21:57/v 22:30 22:58 23:21 23:47`),
     we: R(`05:50 06:29 07:16 08:06/v 08:43/v 09:31/v 10:08 10:56 11:33 12:28 13:06 13:51 14:38 15:15 15:54 16:40/v 17:30 18:12 18:54 19:36 20:12 21:01 21:44 22:26/v 23:02/v 23:50`),
     buses:{wk:'10대', we:'7~8대'},
     note:{
       wk:'긴 노선이라 날마다 ±3~8분씩 흔들립니다. 정해진 시각보다는 약 25~40분 간격으로 온다고 보시면 됩니다. 실시간 도착정보와 함께 보는 게 좋습니다.',
       we:'토·일 운행 횟수는 26회로 같지만 오전과 밤에는 두 날의 시각이 10분 이상 벌어지기도 했습니다.' } },
-  { id:'071', key:'71', kind:'마을버스', to:'탄현역 · 일산시장', dir:'tanhyeon', color:'--village',
+  { stop:'20675', id:'071', key:'71', kind:'마을버스', to:'탄현역 · 일산시장', dir:'tanhyeon', color:'--village',
     wk: R(`05:58/o 06:17 06:53 07:29 07:57 08:41 09:09 09:50 10:18 10:57/v 12:06 12:40/o 13:09 13:46/o 14:24 14:58/o 15:29 16:10/o 17:15 17:48/o 18:25 18:58/o 19:30 20:09/o 20:42 21:21/o 21:39/v 21:54/o`),
     we: R(`06:54/o 07:56/o 09:05/o 10:22/o 12:00 13:12/v 14:18 15:26 17:09 18:18 19:30 20:38 21:44`),
     buses:{wk:'1~2대', we:'1대'},
@@ -186,7 +195,7 @@ const ROUTES = [
       wk:'차량 2대가 다니는 날(이번 주 월·금)은 하루 26회, 약 35분 간격입니다. 1대만 다닌 날(화~목)은 12~18회, 약 65분 간격이었습니다. 점선 시각은 2대 운행일에만 있는 차입니다.',
       we:'주말엔 1대만 운행합니다. 토요일은 06:54부터, 일요일은 12:02부터 운행했습니다. 일요일 오전 운행 여부는 한 주 데이터로는 확실하지 않습니다.' },
     flag:'시간표가 고정되지 않은 노선입니다. 그날 몇 대가 다니는지에 따라 운행 횟수가 두 배까지 달라집니다.' },
-  { id:'074', key:'74', kind:'마을버스', to:'탄현역 · 후곡', dir:'tanhyeon', color:'--village', official:true,
+  { stop:'20675', id:'074', key:'74', kind:'마을버스', to:'탄현역 · 후곡', dir:'tanhyeon', color:'--village', official:true,
     wk: R(`06:01 06:16 06:36 06:51 07:11 07:21 07:36 07:56 08:16 08:31 08:51 09:06 09:46 10:01 10:21 10:36 10:46 11:16 11:31 12:11 12:26 12:41 13:06 13:21 13:41 13:56 14:16 14:31 14:41 15:06 15:26 15:46 16:01 16:21 17:01 17:26 17:41 17:51 18:11 18:36 18:56 19:11 19:21 19:41 20:06 20:21 20:41 20:51 21:11 21:31 21:41 22:01 22:11 22:31`),
     we: R(`06:21 06:36 06:56 07:11 07:26 07:41 07:56 08:16 08:31 08:51 09:11 09:26 09:46 10:11 10:26 10:41 10:56 11:16 11:31 11:56 12:26 12:46 13:06 13:21 13:46 14:06 14:26 14:46 15:01 15:16 15:36 15:56 16:16 16:31 16:56 17:26 17:46 18:06 18:26 18:46 19:06 19:26 19:46 20:06 20:31 20:51 21:11 21:26 21:41 22:01`),
     buses:{wk:'-', we:'5대'},
@@ -194,30 +203,65 @@ const ROUTES = [
       wk:'운수회사 공식 시간표(하이파크시티1단지·고양시립덕이도서관 출발)에 덕이중학교까지 걸리는 1분을 더한 시각입니다. 예: 도서관 12:40 출발 → 덕이중학교 12:41. 탄현역에서 출발하는 첫차 3대(06:05, 06:25, 06:40)는 이 정류장 통과 시각을 알 수 없어 뺐습니다. 09:00~14:00은 CNG 충전 시간이라 차량이 번갈아 빠집니다.',
       we:'토요일·일요일·공휴일 공식 시간표(5대 운행)에 기점에서 덕이중학교까지 1분을 더한 시각입니다. 탄현역 출발 첫차(06:25, 06:45, 07:00)는 뺐습니다. 10:40~11:55, 15:35~16:55 사이에 식사 시간이 끼어 있고, 09:00~13:00은 CNG 충전 시간입니다.' },
     flag:'공식 시간표 기준입니다. 도로 사정, 차량 정비, 충전, 휴게 시간에 따라 변동될 수 있습니다. 이 노선은 실시간 도착정보가 자주 끊깁니다.' },
+  // ── 대화역(20086) ──
+  { stop:'20086', id:'dh-N002', no:'N002', key:'N002', kind:'마을버스', to:'덕이동 · 하이파크', dir:'hipark', color:'--village',
+    wk: R(`06:34/v 06:50 07:12/v 07:32 08:05/v 08:22/v 08:45 09:02/v 09:30 09:45/v 10:04/v 10:20/v 10:53/v 11:30 12:52 13:28 13:38 14:00/o 14:17 14:56 15:28/v 15:44/v 16:06 16:28/v 16:59/v 17:16 17:33/v 18:11/v 18:46 18:57/v 19:18/v 19:33 20:12 20:41 21:21 21:48 22:10 22:32/v 22:49 23:10`),
+    we: R(`06:46 07:33/v 08:08/v 08:37/o 09:06 09:40/v 10:24 11:17/v 13:30/o 13:41/o 14:16/v 15:02 15:44 16:22/o 16:35/o 17:16 17:54 18:44 19:24 20:04 21:50/v 22:28 23:10`),
+    buses:{wk:'4대', we:'2대'},
+    note:{ wk:'평일 4일 중 3일 이상 같은 시각(±5분)에 지나간 차는 검정, 시각이 더 흔들린 차는 주황입니다. 덕이중학교까지 약 10분 걸립니다.',
+           we:'토·일 각 하루씩만 수집돼 아직 정확도가 낮습니다. 점선 시각은 하루만 관측된 차입니다.' } },
+  { stop:'20086', id:'dh-10', no:'10', key:'10', kind:'일반버스', to:'덕이동 · 파주', dir:'hipark', color:'--city', freq:{ wk:{'first': '06:20', 'last': '00:18', 'n': 37, 'hours': {'6': 2.0, '7': 1.0, '8': 1.8, '9': 2.2, '10': 2.2, '11': 2.0, '12': 2.2, '13': 2.0, '14': 1.8, '15': 2.0, '16': 1.8, '17': 1.8, '18': 2.0, '19': 1.8, '20': 2.5, '21': 2.8, '22': 1.8, '23': 2.2, '24': 1.0}}, we:{'first': '06:27', 'last': '00:16', 'n': 26, 'hours': {'6': 1.0, '7': 2.5, '8': 1.0, '9': 0.5, '10': 2.0, '11': 1.0, '12': 1.5, '13': 1.5, '14': 1.0, '15': 2.0, '16': 1.0, '17': 2.0, '18': 1.0, '19': 1.0, '20': 2.0, '21': 1.0, '22': 2.0, '23': 1.0, '24': 1.0}} },
+    note:{ wk:'정해진 시각보다 약 25~35분 간격으로 옵니다. 날마다 ±10분 정도 흔들려 시간대별 배차로 보여줍니다.', we:'주말엔 약 35~45분 간격입니다.' } },
+  { stop:'20086', id:'dh-67', no:'67', key:'67', kind:'일반버스', to:'덕이동', dir:'hipark', color:'--city', freq:{ wk:{'first': '06:16', 'last': '00:28', 'n': 60, 'hours': {'6': 3.0, '7': 3.0, '8': 3.2, '9': 2.8, '10': 3.5, '11': 3.5, '12': 3.2, '13': 3.5, '14': 3.2, '15': 3.0, '16': 3.0, '17': 3.2, '18': 3.0, '19': 3.0, '20': 3.5, '21': 3.8, '22': 3.0, '23': 3.5, '24': 2.0}}, we:{'first': '06:15', 'last': '00:24', 'n': 42, 'hours': {'6': 2.0, '7': 2.5, '8': 2.5, '9': 2.0, '10': 2.5, '11': 2.0, '12': 2.5, '13': 2.5, '14': 2.0, '15': 2.5, '16': 2.5, '17': 2.0, '18': 1.5, '19': 2.5, '20': 3.0, '21': 1.5, '22': 2.5, '23': 2.0, '24': 1.5}} },
+    note:{ wk:'하루 약 60회, 거의 15~20분 간격으로 고르게 옵니다.', we:'주말엔 하루 약 40회, 20~30분 간격입니다.' } },
+  { stop:'20086', id:'dh-80', no:'80', key:'80', kind:'일반버스', to:'광성교회', dir:'gwangseong', color:'--city',
+    wk: R(`05:29 05:50 06:08/v 06:30 06:58 07:17/v 07:40 08:07/v 08:33/v 08:56/v 09:20/v 09:37/o 09:49 10:06 10:29 10:58 11:20 11:41 12:02 12:22 12:47/v 13:11/v 13:34/v 13:57 14:20 14:41/v 15:02 15:29/v 15:56/v 16:20 16:45 17:09 17:41/v 18:04/v 18:32/v 19:00/v 19:29 19:46/o 19:58/v 20:13/v 20:32 20:56 21:20 21:46/v 22:12/o 22:24/o 22:37 22:58 23:16 23:33 23:50`),
+    we: R(`05:30 05:52 06:16 06:42 07:01/o 07:09/o 07:32 07:54/o 08:05/o 08:24/o 08:31/o 08:55 09:22 09:48/v 10:13/o 10:20/o 10:40/o 10:49/o 11:10 11:44 12:10 12:38 13:04 13:37 14:04 14:32 14:56/v 15:24 15:54/v 16:21 16:46/o 16:56/o 17:16 17:46 18:17 18:40/o 18:48/o 19:12 19:40 20:05 20:32 21:00 21:33 21:57 22:19/o 22:26/o 22:48 23:16 23:41`),
+    buses:{wk:'-', we:'-'},
+    note:{ wk:'광성교회 방면에서 가장 규칙적인 노선입니다. 05:29 첫차부터 약 20~25분 간격이고, 평일 4일 모두 같은 시각에 지나간 차가 대부분입니다.',
+           we:'토·일 각 하루씩만 수집됐습니다. 점선 시각은 하루만 관측된 차입니다.' } },
+  { stop:'20086', id:'dh-600', no:'600', key:'600', kind:'일반버스', to:'광성교회', dir:'gwangseong', color:'--city', freq:{ wk:{'first': '06:01', 'last': '23:50', 'n': 52, 'hours': {'6': 3.0, '7': 3.0, '8': 2.2, '9': 3.0, '10': 4.0, '11': 3.0, '12': 2.0, '13': 3.0, '14': 3.0, '15': 3.0, '16': 2.8, '17': 2.8, '18': 2.2, '19': 3.2, '20': 3.8, '21': 2.5, '22': 2.8, '23': 3.0}}, we:{'first': '06:00', 'last': '23:48', 'n': 32, 'hours': {'5': 0.5, '6': 1.5, '7': 1.5, '8': 1.5, '9': 2.0, '10': 1.5, '11': 1.5, '12': 2.0, '13': 2.0, '14': 1.5, '15': 1.5, '16': 2.0, '17': 2.0, '18': 2.0, '19': 2.0, '20': 2.0, '21': 2.0, '22': 1.0, '23': 2.0}} },
+    note:{ wk:'평일 하루 약 52회, 15~25분 간격입니다.', we:'주말엔 하루 약 32회로 줄어 30분 안팎 간격입니다.' } },
+  { stop:'20086', id:'dh-1500', no:'1500', key:'1500', kind:'광역버스', to:'광성교회', dir:'gwangseong', color:'--city', freq:{ wk:{'first': '06:41', 'last': '00:40', 'n': 76, 'hours': {'6': 1.2, '7': 3.5, '8': 4.0, '9': 4.2, '10': 3.8, '11': 4.0, '12': 4.5, '13': 4.5, '14': 4.5, '15': 3.8, '16': 3.5, '17': 4.2, '18': 3.2, '19': 2.8, '20': 6.0, '21': 5.2, '22': 4.5, '23': 4.5, '24': 3.5}}, we:{'first': '06:46', 'last': '00:32', 'n': 59, 'hours': {'6': 1.0, '7': 3.5, '8': 4.0, '9': 2.0, '10': 3.0, '11': 3.0, '12': 3.5, '13': 3.0, '14': 3.0, '15': 3.0, '16': 2.5, '17': 3.0, '18': 4.0, '19': 4.0, '20': 3.0, '21': 4.0, '22': 3.5, '23': 4.0, '24': 2.0}} },
+    note:{ wk:'가장 자주 오는 노선입니다. 평일 하루 약 76회, 낮에는 12~15분, 밤 8~11시에는 10분 안팎 간격입니다. 예약 전용 차(1500 예약)는 뺐습니다.', we:'주말엔 하루 약 60회, 15~20분 간격입니다.' } },
 ];
 const DIRS = [
-  { id:'daehwa', name:'대화역 방면', sub:'N002 · 10번', routes:['N002','10'] },
-  { id:'tanhyeon', name:'탄현역 방면', sub:'074 후곡 · 071 일산시장', routes:['074','071'] },
+  { stop:'20675', id:'daehwa', name:'대화역 방면', sub:'N002 · 10번', routes:['N002','10'] },
+  { stop:'20675', id:'tanhyeon', name:'탄현역 방면', sub:'074 후곡 · 071 일산시장', routes:['074','071'] },
+  { stop:'20086', id:'hipark', name:'하이파크 방면', sub:'10 · N002 · 67번', routes:['dh-10','dh-N002','dh-67'] },
+  { stop:'20086', id:'gwangseong', name:'광성교회 방면', sub:'600 · 80 · 1500번', routes:['dh-600','dh-80','dh-1500'] },
 ];
+const STOPS = [
+  { no:'20675', name:'덕이중학교', area:'경기 고양 · 덕이동', dirs:'대화역 방면 · 탄현역 방면', start:'N002' },
+  { no:'20086', name:'대화역', area:'경기 고양 · 예비군훈련장·성저3·4단지 방면', dirs:'하이파크 방면 · 광성교회 방면', start:'dh-N002' },
+];
+const rno = (x) => x.no || x.id;
 // 실시간 도착정보: Google Apps Script 웹 앱 주소 (인증키는 Apps Script 안에만 있음)
-const LIVE_URL = 'https://script.google.com/macros/s/AKfycbzVUADfsjRAPQJxMVhtHUcnL3Ju1MFbRHf4Tg3fFbYEXVdAUyExJjeTHiZxw4vz2x8W4A/exec?stop=20675';
-const LIVE = { data:null, at:0, err:false };
+const LIVE_URL = 'https://script.google.com/macros/s/AKfycbzVUADfsjRAPQJxMVhtHUcnL3Ju1MFbRHf4Tg3fFbYEXVdAUyExJjeTHiZxw4vz2x8W4A/exec';
+const LIVES = {};   // 정류장 번호별 { data, at, err }
+const liveOf = (stop) => LIVES[stop] || (LIVES[stop] = { data:null, at:0, err:false });
 const norm = (x) => String(x).replace(/^0+/, '');
 function liveFor(rr){
   if (rr.official) return null;   // 074번: 실시간 정보가 자주 끊겨 시간표로 표시
+  const LIVE = liveOf(rr.stop);
   if (!LIVE.data || Date.now()-LIVE.at > 5*60e3) return null;
+  const age = LIVE.data.age ? Math.round(LIVE.data.age/60) : 0;   // 수집 데이터로 대신 응답한 경우(분)
   const b = (LIVE.data.buses||[]).find(x => norm(x.route) === norm(rr.key||rr.id));
   if (!b) return [];
-  return [[b.predict1,b.stops1],[b.predict2,b.stops2]].filter(([p])=>p!=='' && p!=null).map(([p,s])=>({ m:Number(p), stops:Number(s) }));
+  return [[b.predict1,b.stops1],[b.predict2,b.stops2]].filter(([p])=>p!=='' && p!=null).map(([p,s])=>({ m:Math.max(0, Number(p)-age), stops:Number(s) }));
 }
 const whenTxt = (m) => m<=1 ? '곧 도착' : `도착 예정 ${m}분`;
 const stopTxt = (n) => `${n}정거장 전`;
+// 지금 보고 있는 정류장만, 1분마다 불러옴 (하루 API 호출 한도 절약)
 async function pullLive(){
-  if (!LIVE_URL) return;
-  try { const res = await fetch(LIVE_URL, { cache:'no-store' }); LIVE.data = await res.json(); LIVE.at = Date.now(); LIVE.err = false; }
-  catch(e){ LIVE.err = true; }
+  if (!LIVE_URL || document.hidden) return;
+  const stop = curRoute().stop; const L = liveOf(stop);
+  try { const res = await fetch(`${LIVE_URL}?stop=${stop}`, { cache:'no-store' }); const j = await res.json();
+        if (j.ok === false && !j.buses) throw new Error(j.error||'fail'); L.data = j; L.at = Date.now(); L.err = false; }
+  catch(e){ L.err = true; }
   render();
 }
+const curRoute = () => ROUTES.find(x=>x.id===state.route);
 const HOLIDAYS = ['2026-12-25','2027-01-01']; // 주말 시간표로 표시 (추정)
 
 const $ = (id) => document.getElementById(id);
@@ -242,28 +286,38 @@ function render(){
   $('panel').style.setProperty('--rc', `var(${r.color})`);
 
   const d = DIRS.find(x=>x.id===r.dir);
-  $('dirs').innerHTML = DIRS.map(x=>`<button type="button" id="dir-${x.id}" data-d="${x.id}" aria-pressed="${x.id===d.id}"><b>${x.name}</b><span>${x.sub}</span></button>`).join('');
+  const S = STOPS.find(x=>x.no===r.stop);
+  $('stopno').textContent = `${S.no} · ${S.area}`; $('stopname').textContent = S.name; $('stopdir').textContent = S.dirs;
+  $('stops').innerHTML = STOPS.map(x=>`<button type="button" id="stop-${x.no}" data-s="${x.no}" aria-pressed="${x.no===S.no}">${x.name}</button>`).join('');
+  $('dirs').innerHTML = DIRS.filter(x=>x.stop===S.no).map(x=>`<button type="button" id="dir-${x.id}" data-d="${x.id}" aria-pressed="${x.id===d.id}"><b>${x.name}</b><span>${x.sub}</span></button>`).join('');
   const up = [];
   d.routes.forEach(id=>{ const rr = ROUTES.find(x=>x.id===id); const lv = liveFor(rr);
     if (lv && lv.length) lv.forEach(b=>up.push({rr, m:b.m, stops:b.stops, live:true}));
+    else if (rr.freq) { const hw = headway(rr.freq[now.dt], now.min); if (hw) up.push({rr, m:hw/2, hw, fq:true}); }
     else rr[now.dt].filter(x=>x.l!=='o' && toMin(x.t)>=now.min).slice(0,3).forEach(x=>up.push({rr, t:x.t, m:toMin(x.t)-now.min})); });
   up.sort((a,b)=>a.m-b.m);
   $('board').innerHTML = `<span class="lbl">${d.name} · 지금 정류장에 올 버스</span>` + (up.length ? up.slice(0,4).map(x=>{
-      if (x.live) return `<div class="brow" style="--rc:var(${x.rr.color})"><span class="rn">${x.rr.id}</span><span class="to">${x.rr.to}<span class="tag live">실시간</span></span><span class="tm lv">${whenTxt(x.m)}<span class="st">${stopTxt(x.stops)}</span></span></div>`;
-      return `<div class="brow" style="--rc:var(${x.rr.color})"><span class="rn">${x.rr.id}</span><span class="to">${x.rr.to}<span class="tag">시간표</span></span><span class="tm">${x.t}<small>${x.m===0?'곧':x.m+'분 후'}</small></span></div>`;}).join('')
+      if (x.fq) return `<div class="brow" style="--rc:var(${x.rr.color})"><span class="rn">${rno(x.rr)}</span><span class="to">${x.rr.to}<span class="tag">배차</span></span><span class="tm lv" style="font-weight:500;font-size:14px">약 ${x.hw}분 간격</span></div>`;
+      if (x.live) return `<div class="brow" style="--rc:var(${x.rr.color})"><span class="rn">${rno(x.rr)}</span><span class="to">${x.rr.to}<span class="tag live">실시간</span></span><span class="tm lv">${whenTxt(x.m)}<span class="st">${stopTxt(x.stops)}</span></span></div>`;
+      return `<div class="brow" style="--rc:var(${x.rr.color})"><span class="rn">${rno(x.rr)}</span><span class="to">${x.rr.to}<span class="tag">시간표</span></span><span class="tm">${x.t}<small>${x.m===0?'곧':x.m+'분 후'}</small></span></div>`;}).join('')
     : `<div class="brow"><span class="to" style="grid-column:1/-1">오늘 운행이 끝났습니다.</span></div>`);
-  $('routes').innerHTML = d.routes.map(id=>ROUTES.find(x=>x.id===id)).map(x=>`<button type="button" id="rt-${x.id}" data-r="${x.id}" aria-pressed="${x.id===r.id}" style="--rc:var(${x.color})"><span class="no">${x.id}</span><span class="kind">${x.to}</span></button>`).join('');
+  $('routes').style.setProperty('--cols', d.routes.length);
+  $('routes').innerHTML = d.routes.map(id=>ROUTES.find(x=>x.id===id)).map(x=>`<button type="button" id="rt-${x.id}" data-r="${x.id}" aria-pressed="${x.id===r.id}" style="--rc:var(${x.color})"><span class="no">${rno(x)}</span><span class="kind">${x.to}</span></button>`).join('');
   $('seg-wk').setAttribute('aria-pressed', dt==='wk'); $('seg-we').setAttribute('aria-pressed', dt==='we');
   const isToday = dt===now.dt;
   $('today').textContent = `오늘 ${now.label}` + (now.hol ? ' · 공휴일(주말 시간표 추정)' : '') + (isToday ? '' : ' · 다른 요일 보는 중');
 
   const lvR = liveFor(r);
   $('livebar').hidden = !LIVE_URL || !!r.official;
-  if (LIVE_URL && !r.official) $('livebar').innerHTML = `<span class="lbl">실시간 도착</span>` + (
-    lvR === null ? `<span class="livestat">${LIVE.err ? '실시간 정보를 불러오지 못했습니다. 아래 시간표를 참고하세요.' : '불러오는 중…'}</span>`
+  const LV = liveOf(r.stop);
+  const ageMin = LV.data && LV.data.age ? Math.round(LV.data.age/60) : 0;
+  if (LIVE_URL && !r.official) $('livebar').innerHTML = `<span class="lbl">실시간 도착${ageMin>=2 ? ` · ${ageMin}분 전 수집 기준` : ''}</span>` + (
+    lvR === null ? `<span class="livestat">${LV.err ? '실시간 정보를 불러오지 못했습니다. 아래 시간표를 참고하세요.' : '불러오는 중…'}</span>`
     : !lvR.length ? `<span class="livestat">지금은 도착 정보가 없습니다.</span>`
     : lvR.map((b,i)=>`<span class="chip lv${i===0?' first':''}">${stopTxt(b.stops)}<small>${whenTxt(b.m)}</small></span>`).join(''));
 
+  $('legend').hidden = !!r.freq;
+  if (r.freq) { renderFreq(r, dt, now, isToday); return; }
   const list = r[dt];
   const upcoming = isToday ? list.filter(x=>toMin(x.t)>=now.min) : [];
   const nxt = upcoming.filter(x=>x.l!=='o').slice(0,3);
@@ -297,16 +351,42 @@ function render(){
   $('note').innerHTML = (r.flag ? `<p class="flag">${r.flag}</p>` : '') + `<p>${r.note[dt]}</p>`;
 }
 
+function headway(F, min){
+  const h = Math.floor(min/60), c = F.hours[h] || F.hours[h+24];
+  if (!c || min < toMin(F.first)) return null;
+  return Math.round(60/c);
+}
+function renderFreq(r, dt, now, isToday){
+  const F = r.freq[dt];
+  const hw = isToday ? headway(F, now.min) : null;
+  $('next').innerHTML = `<span class="lbl">배차 간격 (통계)</span>` + (
+    !isToday ? `<span class="none">오늘은 ${now.dt==='wk'?'평일':'주말'} 시간표가 적용됩니다.</span>`
+    : hw ? `<span class="chip first">약 ${hw}분<small>지금 시간대 평균 간격</small></span>`
+    : `<span class="none">지금은 운행 시간이 아닙니다. 첫차 ${F.first}</span>`);
+  $('stats').innerHTML = [[F.first,'첫차'],[F.last,'막차'],[`약 ${F.n}회`,'하루 운행'],[hw?`약 ${hw}분`:'-','지금 배차']]
+    .map(([b,s])=>`<div class="stat"><b>${b}</b><span>${s}</span></div>`).join('');
+  const curH = now.min/60|0; let html = '';
+  Object.keys(F.hours).map(Number).sort((a,b)=>a-b).forEach(h=>{
+    const c = F.hours[h]; const cls = isToday && h===curH ? ' row-now' : '';
+    html += `<div class="h${cls}">${String(h%24).padStart(2,'0')}</div><div class="m${cls}"><span class="fq"><b>${c>=1?Math.round(c):'0~1'}</b>회 · 약 ${Math.round(60/c)}분 간격</span></div>`;
+  });
+  $('grid').innerHTML = html;
+  $('note').innerHTML = `<p>${r.note[dt]}</p>`;
+}
+
+$('stops').addEventListener('click', e=>{ const b = e.target.closest('button[data-s]'); if(!b) return;
+  state.route = STOPS.find(x=>x.no===b.dataset.s).start;
+  try{ localStorage.setItem('deogi-tt', JSON.stringify({route:state.route})); }catch(e){} render(); pullLive(); });
 $('dirs').addEventListener('click', e=>{ const b = e.target.closest('button[data-d]'); if(!b) return;
   const d = DIRS.find(x=>x.id===b.dataset.d); state.route = d.routes[0];
-  try{ localStorage.setItem('deogi-tt', JSON.stringify({route:state.route})); }catch(e){} render(); });
+  try{ localStorage.setItem('deogi-tt', JSON.stringify({route:state.route})); }catch(e){} render(); pullLive(); });
 $('routes').addEventListener('click', e=>{ const b = e.target.closest('button[data-r]'); if(!b) return;
   state.route = b.dataset.r; try{ localStorage.setItem('deogi-tt', JSON.stringify({route:state.route})); }catch(e){} render(); });
 document.querySelector('.seg').addEventListener('click', e=>{ const b = e.target.closest('button[data-dt]'); if(!b) return;
   state.dt = b.dataset.dt===seoulNow().dt ? null : b.dataset.dt; render(); });
 render();
 pullLive();
-setInterval(pullLive, 30000);
+setInterval(pullLive, 60000);
 setInterval(render, 30000);
 document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) pullLive(); });
 </script>

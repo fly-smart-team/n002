@@ -5,7 +5,7 @@
  *  - 덕이중학교 → 대화역·탄현역 방면 : 20675 (정류장 번호 고정)
  *  - 대화역 → 덕이동   : 10, N002, 67
  *  - 탄현역 → 덕이동   : 074, 071
- *  - 대화역 → 광성교회 : 80, 600, 900
+ *  - 대화역 → 광성교회 : 80, 600, 1500
  *  번호를 모르는 정류장은 setup이 노선 경로에서 자동으로 찾습니다
  *  ("출발지 이름이 들어간 정류장 → 몇 정거장 뒤 목적지 이름" 순서인 쪽).
  *
@@ -25,12 +25,14 @@ const CONFIG = {
     { group: 'deogi',      label: '덕이중학교',        stop: '20675', routes: ['074', '071', 'N002', '10'] },
     { group: 'daehwa',     label: '대화역 → 덕이동',   from: ['대화역'], to: '덕이', routes: ['10', 'N002', '67'] },
     { group: 'tanhyeon',   label: '탄현역 → 덕이동',   from: ['탄현역'], to: '덕이', routes: ['074', '071'] },
-    { group: 'gwangseong', label: '대화역 → 광성교회', from: ['대화역'], to: '광성교회', routes: ['80', '600', '900'], maxAhead: 40 },
+    { group: 'gwangseong', label: '대화역 → 광성교회', from: ['대화역'], to: '광성교회', routes: ['80', '600', '1500'], maxAhead: 40 },
   ],
   MAX_AHEAD: 25,              // 출발 정류장에서 목적지까지 최대 정거장 수
   ACTIVE_START: 5 * 60,       // 05:00부터
   ACTIVE_END: 24 * 60 + 30,   // 다음날 00:30까지
-  DAILY_BUDGET: 880,          // 수집에 쓸 하루 호출 수 (나머지는 실시간 웹 앱용)
+  DAILY_BUDGET: 860,          // 수집에 쓸 하루 호출 수
+  LIVE_BUDGET: 120,           // 실시간 웹 앱이 직접 API를 부를 수 있는 하루 횟수 (넘으면 수집 데이터로 응답)
+  LIVE_CACHE_SEC: 60,         // 같은 정류장 실시간 응답을 재사용하는 시간
 };
 
 const BASE = 'https://apis.data.go.kr/6410000';
@@ -110,6 +112,8 @@ function pollStation_(st, now) {
   const props = PropertiesService.getScriptProperties();
   const list = fetchArrivals_(st.id);
   if (list === null) return;
+  // 웹 앱이 한도를 넘었을 때 쓸 수 있게 최근 수집 결과를 보관
+  CacheService.getScriptCache().put('poll_' + st.no, JSON.stringify({ t: now.getTime(), buses: compact_(list) }), 21600);
 
   const ss = SpreadsheetApp.getActive();
   const day = '일월화수목금토'[now.getDay()];
@@ -168,23 +172,35 @@ function doGet(e) {
   if (!st) return json_({ ok: false, error: 'unknown stop' });
 
   const cache = CacheService.getScriptCache();
-  let json = cache.get('live_' + no);
-  if (!json) {
+  const hit = cache.get('live_' + no);
+  if (hit) return ContentService.createTextOutput(hit).setMimeType(ContentService.MimeType.JSON);
+
+  // 하루 직접 호출 한도 안에서만 API 호출
+  const props = PropertiesService.getScriptProperties();
+  const dayKey = 'LIVECNT_' + Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyyMMdd');
+  const used = Number(props.getProperty(dayKey) || 0);
+  if (used < CONFIG.LIVE_BUDGET) {
     const list = fetchArrivals_(st.id);
-    json = JSON.stringify({
-      stop: no,
-      name: st.name,
-      updated: Utilities.formatDate(new Date(), 'Asia/Seoul', "yyyy-MM-dd'T'HH:mm:ssXXX"),
-      ok: list !== null,
-      buses: (list || []).map(b => ({
-        route: String(b.routeName),
-        predict1: num_(b.predictTime1), stops1: num_(b.locationNo1),
-        predict2: num_(b.predictTime2), stops2: num_(b.locationNo2),
-      })),
-    });
-    if (list !== null) cache.put('live_' + no, json, 30);
+    if (list !== null) {
+      props.setProperty(dayKey, String(used + 1));
+      const json = JSON.stringify({ stop: no, name: st.name, ok: true, age: 0,
+        updated: Utilities.formatDate(new Date(), 'Asia/Seoul', "yyyy-MM-dd'T'HH:mm:ssXXX"), buses: compact_(list) });
+      cache.put('live_' + no, json, CONFIG.LIVE_CACHE_SEC);
+      return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+    }
   }
-  return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+  // 한도 초과 또는 API 오류: 최근 수집 결과로 응답 (age = 수집 후 지난 초)
+  const polled = JSON.parse(cache.get('poll_' + no) || 'null');
+  if (!polled) return json_({ stop: no, ok: false, error: 'no data' });
+  return json_({ stop: no, name: st.name, ok: true, age: Math.round((Date.now() - polled.t) / 1000), buses: polled.buses });
+}
+
+function compact_(list) {
+  return list.map(b => ({
+    route: String(b.routeName),
+    predict1: num_(b.predictTime1), stops1: num_(b.locationNo1),
+    predict2: num_(b.predictTime2), stops2: num_(b.locationNo2),
+  }));
 }
 
 // ───────── 정류장 찾기: '버스노선 조회' API 사용 ─────────
