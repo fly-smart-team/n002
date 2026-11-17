@@ -1,0 +1,905 @@
+{
+ "station": "탄현 (경의중앙선)",
+ "direction": "서울역·지평 방면 (API updnLine = 하행)",
+ "source": "사용자 제공 지하철 앱 시간표 캡처, 2026-11-17",
+ "note": "토요일과 공휴일 시간표가 같음",
+ "weekday": [
+  {
+   "t": "05:28",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "05:32",
+   "to": "팔당",
+   "express": false
+  },
+  {
+   "t": "05:42",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "05:56",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "06:05",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "06:15",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "06:26",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "06:32",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "06:37",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "06:42",
+   "to": "팔당",
+   "express": true
+  },
+  {
+   "t": "06:48",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "06:53",
+   "to": "서울역",
+   "express": true
+  },
+  {
+   "t": "06:59",
+   "to": "팔당",
+   "express": true
+  },
+  {
+   "t": "07:04",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "07:08",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "07:17",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "07:24",
+   "to": "용산",
+   "express": false
+  },
+  {
+   "t": "07:30",
+   "to": "팔당",
+   "express": false
+  },
+  {
+   "t": "07:34",
+   "to": "용문",
+   "express": true
+  },
+  {
+   "t": "07:40",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "07:51",
+   "to": "지평",
+   "express": false
+  },
+  {
+   "t": "07:58",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "08:11",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "08:18",
+   "to": "서울역",
+   "express": true
+  },
+  {
+   "t": "08:29",
+   "to": "팔당",
+   "express": false
+  },
+  {
+   "t": "08:34",
+   "to": "서울역",
+   "express": true
+  },
+  {
+   "t": "08:46",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "08:56",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "09:02",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "09:17",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "09:27",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "09:37",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "09:53",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "10:01",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "10:21",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "10:36",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "10:50",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "11:04",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "11:25",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "11:32",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "11:50",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "12:04",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "12:20",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "12:32",
+   "to": "서울역",
+   "express": true
+  },
+  {
+   "t": "12:43",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "13:02",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "13:12",
+   "to": "서울역",
+   "express": true
+  },
+  {
+   "t": "13:24",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "13:35",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "13:46",
+   "to": "지평",
+   "express": false
+  },
+  {
+   "t": "14:03",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "14:09",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "14:24",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "14:46",
+   "to": "지평",
+   "express": false
+  },
+  {
+   "t": "15:00",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "15:11",
+   "to": "서울역",
+   "express": true
+  },
+  {
+   "t": "15:25",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "15:36",
+   "to": "팔당",
+   "express": false
+  },
+  {
+   "t": "15:48",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "16:00",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "16:11",
+   "to": "서울역",
+   "express": true
+  },
+  {
+   "t": "16:24",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "16:33",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "16:41",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "16:46",
+   "to": "서울역",
+   "express": true
+  },
+  {
+   "t": "16:52",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "17:04",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "17:10",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "17:18",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "17:28",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "17:34",
+   "to": "팔당",
+   "express": false
+  },
+  {
+   "t": "17:45",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "17:53",
+   "to": "용산",
+   "express": false
+  },
+  {
+   "t": "18:03",
+   "to": "용문",
+   "express": true
+  },
+  {
+   "t": "18:08",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "18:15",
+   "to": "팔당",
+   "express": true
+  },
+  {
+   "t": "18:24",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "18:29",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "18:35",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "18:43",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "18:51",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "18:58",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "19:03",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "19:26",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "19:36",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "19:42",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "19:56",
+   "to": "지평",
+   "express": false
+  },
+  {
+   "t": "20:08",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "20:17",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "20:26",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "20:39",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "20:59",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "21:10",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "21:17",
+   "to": "용문",
+   "express": true
+  },
+  {
+   "t": "21:28",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "21:42",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "21:53",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "22:19",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "22:25",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "22:34",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "23:00",
+   "to": "청량리",
+   "express": false
+  },
+  {
+   "t": "23:11",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "23:23",
+   "to": "청량리",
+   "express": false
+  }
+ ],
+ "saturday_holiday": [
+  {
+   "t": "05:42",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "05:58",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "06:17",
+   "to": "지평",
+   "express": false
+  },
+  {
+   "t": "06:30",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "06:48",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "06:56",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "07:04",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "07:17",
+   "to": "지평",
+   "express": false
+  },
+  {
+   "t": "07:30",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "07:47",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "08:02",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "08:13",
+   "to": "용산",
+   "express": false
+  },
+  {
+   "t": "08:20",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "08:30",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "08:44",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "08:54",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "09:09",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "09:20",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "09:28",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "09:47",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "10:01",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "10:13",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "10:22",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "10:32",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "10:45",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "10:57",
+   "to": "팔당",
+   "express": false
+  },
+  {
+   "t": "11:13",
+   "to": "지평",
+   "express": false
+  },
+  {
+   "t": "11:33",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "11:46",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "11:57",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "12:15",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "12:30",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "12:47",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "13:02",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "13:13",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "13:35",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "13:46",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "14:02",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "14:15",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "14:31",
+   "to": "팔당",
+   "express": false
+  },
+  {
+   "t": "14:38",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "14:56",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "15:16",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "15:38",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "15:48",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "16:05",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "16:18",
+   "to": "지평",
+   "express": false
+  },
+  {
+   "t": "16:34",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "16:46",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "16:59",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "17:17",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "17:28",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "17:40",
+   "to": "용산",
+   "express": false
+  },
+  {
+   "t": "17:53",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "18:04",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "18:20",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "18:29",
+   "to": "지평",
+   "express": false
+  },
+  {
+   "t": "18:39",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "18:55",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "19:20",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "19:43",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "19:59",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "20:12",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "20:25",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "20:37",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "20:52",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "21:04",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "21:19",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "21:36",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "21:55",
+   "to": "용문",
+   "express": false
+  },
+  {
+   "t": "22:12",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "22:28",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "22:40",
+   "to": "서울역",
+   "express": false
+  },
+  {
+   "t": "22:52",
+   "to": "덕소",
+   "express": false
+  },
+  {
+   "t": "23:10",
+   "to": "청량리",
+   "express": false
+  },
+  {
+   "t": "23:35",
+   "to": "서울역",
+   "express": false
+  }
+ ]
+}
