@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>하이파크시티 BUS</title>
-<meta name="description" content="덕이중학교·대화역 정류장 실시간 버스 도착과 시간표">
+<meta name="description" content="덕이중학교·대화역·탄현역 정류장 실시간 버스 도착과 시간표">
 <meta name="theme-color" content="#0b1120">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/favicon-64.png">
@@ -20,7 +20,7 @@
 /* 어두운 남색 바탕 + 분홍빛 빨강 강조. 정류장 탭 → 방면 → 다음 버스 큰 카드 → 전체 시간표 */
 :root{
   --bg:#0b1120; --card:#131c2e; --card2:#0e1627; --line:#22304a; --ink:#e8edf6; --muted:#8c98ae; --dim:#5d6a82;
-  --accent:#ff6b81; --accent2:#e8344f; --live:#4ade80; --village:#4ade80; --city:#5cc8ff; --warn:#f5b546;
+  --accent:#ff6b81; --gj:#6cc5b0; --accent2:#e8344f; --live:#4ade80; --village:#4ade80; --city:#5cc8ff; --warn:#f5b546;
   --font:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
   color-scheme:dark;
 }
@@ -52,9 +52,10 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .clock span{color:var(--muted);font-size:12px}
 
 /* 정류장 탭 */
-.stops{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--card2);border:1px solid var(--line);border-radius:20px;padding:6px}
+.stops{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;background:var(--card2);border:1px solid var(--line);border-radius:20px;padding:6px}
 .stops button{border:0;background:transparent;border-radius:15px;padding:12px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;color:var(--muted)}
-.stops button b{font-size:18px;color:var(--ink)}
+.stops button b{font-size:17px;color:var(--ink);white-space:nowrap}
+.stops button span{text-align:center}
 .stops button span{font-size:12px}
 .stops button[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:0 6px 18px rgb(255 107 129 / .3)}
 .stops button[aria-pressed="true"] b{color:#fff}
@@ -94,6 +95,22 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .mini .s.on{color:var(--live)}
 @media (prefers-reduced-motion:no-preference){.stopsaway i{animation:pulse 1.6s ease-in-out infinite}}
 @keyframes pulse{50%{box-shadow:0 0 0 7px rgb(74 222 128 / 0)}}
+.transfer{margin-top:8px;padding:10px 12px;border-radius:14px;background:rgb(108 197 176 / .12);color:var(--ink);font-size:15px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.transfer .ln{font-size:12px;font-weight:700;color:#0b1120;background:var(--gj);border-radius:6px;padding:2px 7px}
+.transfer b{font-size:17px}
+.transfer small{color:var(--muted);font-size:12px;width:100%}
+.mini .x{font-size:12px;color:var(--gj)}
+.metro{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px 16px 10px;display:flex;flex-direction:column;gap:4px}
+.metro h3{margin:0;font-size:16px;display:flex;align-items:center;gap:8px}
+.metro h3 .ln{font-size:12px;color:#0b1120;background:var(--gj);border-radius:6px;padding:2px 8px}
+.metro .hint{color:var(--muted);font-size:12px;margin-bottom:4px}
+.trow{display:grid;grid-template-columns:62px 1fr auto;gap:10px;align-items:baseline;padding:9px 0;border-top:1px solid var(--line)}
+.trow .tt{font-size:19px;font-weight:700}
+.trow .dst{font-size:16px;font-weight:700;min-width:0}
+.trow .dst em{font-style:normal;color:var(--accent);font-size:12px;margin-left:4px}
+.trow .st{text-align:right;font-size:14px;color:var(--muted)}
+.trow .st.on{color:var(--live);font-weight:700}
+.trow.ok .tt{color:var(--gj)}
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 .mini{background:var(--card2);border-radius:18px;padding:14px 14px 13px;display:flex;flex-direction:column;gap:4px;min-width:0}
 .mini .k{color:var(--muted);font-size:13px}
@@ -163,7 +180,7 @@ details ul{padding-left:18px;margin:8px 0 0;display:flex;flex-direction:column;g
     <div class="logo"><img src="icons/icon-192.png" alt=""></div>
     <div>
       <h1>하이파크시티 <em>BUS</em></h1>
-      <p>덕이중학교 · 대화역 실시간 도착</p>
+      <p>덕이중학교 · 대화역 · 탄현역 실시간 도착</p>
     </div>
     <button class="inst" id="install" type="button" hidden>앱 설치</button>
   </header>
@@ -177,6 +194,7 @@ details ul{padding-left:18px;margin:8px 0 0;display:flex;flex-direction:column;g
   <nav class="dirs" id="dirs" aria-label="방면"></nav>
 
   <section class="hero" id="hero" aria-live="polite"></section>
+  <section class="metro" id="subway" hidden></section>
 
   <section class="tt">
     <div class="tt-head"><h2 id="ttTitle">전체 시간표</h2><span id="ttSub"></span></div>
@@ -203,6 +221,8 @@ details ul{padding-left:18px;margin:8px 0 0;display:flex;flex-direction:column;g
       <li>경기도 버스도착정보를 2~4분 간격으로 모아 정류장을 지나간 시각을 추정한 실측 통계입니다. 오차는 1~3분 정도라 2~3분 일찍 나가는 게 안전합니다.</li>
       <li>덕이중학교: 2026년 11월 1~9일 수집. 074번은 정류장 공식 시간표(덕이도서관 출발 +1분)를 씁니다.</li>
       <li>대화역: 2026년 11월 10~16일 수집(평일 4일, 토·일 각 1일). 10·67·600·1500번은 시간대별 배차 간격으로 보여줍니다.</li>
+      <li>탄현역(58306): 074·071번은 이 정류장을 양방향으로 지나서, 덕이동(하이파크) 가는 쪽만 골라 보여줍니다. 시간표는 2026년 11월 17일부터 방향을 나눠 다시 모으고 있습니다.</li>
+      <li>탄현역 경의중앙선은 하행(서울역·덕소·지평 쪽)만 보여줍니다. 시간표는 2026년 11월 기준이고, 일요일·공휴일은 토요일 시간표와 같습니다. '탑승 가능' 열차는 덕이중학교에서 버스 탑승 후 15분(버스 10분 + 도보 5분) 뒤 출발하는 첫 열차입니다.</li>
       <li>공휴일은 주말 시간표를 따른다고 가정했습니다.</li>
       <li>실시간 정보는 1분마다 새로 받습니다. 하루 조회 한도를 넘으면 최근 수집 정보(최대 4분 전)로 보여줍니다.</li>
     </ul>
@@ -270,19 +290,52 @@ const ROUTES = [
     note:{ wk:'평일 하루 약 52회, 15~25분 간격입니다.', we:'주말엔 하루 약 32회로 줄어 30분 안팎 간격입니다.' } },
   { stop:'20086', id:'dh-1500', no:'1500', key:'1500', kind:'광역버스', to:'광성교회', dir:'gwangseong', color:'--city', freq:{ wk:{'first': '06:41', 'last': '00:40', 'n': 76, 'hours': {'6': 1.2, '7': 3.5, '8': 4.0, '9': 4.2, '10': 3.8, '11': 4.0, '12': 4.5, '13': 4.5, '14': 4.5, '15': 3.8, '16': 3.5, '17': 4.2, '18': 3.2, '19': 2.8, '20': 6.0, '21': 5.2, '22': 4.5, '23': 4.5, '24': 3.5}}, we:{'first': '06:46', 'last': '00:32', 'n': 59, 'hours': {'6': 1.0, '7': 3.5, '8': 4.0, '9': 2.0, '10': 3.0, '11': 3.0, '12': 3.5, '13': 3.0, '14': 3.0, '15': 3.0, '16': 2.5, '17': 3.0, '18': 4.0, '19': 4.0, '20': 3.0, '21': 4.0, '22': 3.5, '23': 4.0, '24': 2.0}} },
     note:{ wk:'가장 자주 오는 노선입니다. 평일 하루 약 76회, 낮에는 12~15분, 밤 8~11시에는 10분 안팎 간격입니다. 예약 전용 차(1500 예약)는 뺐습니다.', we:'주말엔 하루 약 60회, 15~20분 간격입니다.' } },
+  // ── 탄현역(58306) → 하이파크: 074·071은 이 정류장을 양방향으로 지나므로 덕이동 가는 쪽만 (실시간 전용, 시간표는 수집 중)
+  { stop:'58306', id:'th-074', no:'074', key:'074', kind:'마을버스', to:'덕이동 · 하이파크', dir:'th-hipark', color:'--village', liveOnly:true,
+    note:'탄현역에서 덕이동(하이파크) 가는 방향만 보여줍니다. 반대쪽(후곡·서울도시가스 방향) 074는 뺐습니다. 시간표는 방향을 나눠 다시 모으는 중이라 1~2주 뒤에 나옵니다.' },
+  { stop:'58306', id:'th-071', no:'071', key:'071', kind:'마을버스', to:'덕이동 · 하이파크', dir:'th-hipark', color:'--village', liveOnly:true,
+    note:'탄현역에서 덕이동(하이파크) 가는 방향만 보여줍니다. 시간표는 방향을 나눠 다시 모으는 중이라 1~2주 뒤에 나옵니다.' },
 ];
 const DIRS = [
   { stop:'20675', id:'daehwa', name:'대화역 방면', sub:'N002 · 10번', routes:['N002','10'] },
   { stop:'20675', id:'tanhyeon', name:'탄현역 방면', sub:'074 후곡 · 071 일산시장', routes:['074','071'] },
   { stop:'20086', id:'hipark', name:'하이파크 방면', sub:'10 · N002 · 67번', routes:['dh-10','dh-N002','dh-67'] },
   { stop:'20086', id:'gwangseong', name:'광성교회 방면', sub:'600 · 80 · 1500번', routes:['dh-600','dh-80','dh-1500'] },
+  { stop:'58306', id:'th-hipark', name:'하이파크 방면', sub:'074 · 071번', routes:['th-074','th-071'] },
 ];
 const STOPS = [
-  { no:'20675', name:'덕이중학교', dirs:'대화역 · 탄현역 방면' },
-  { no:'20086', name:'대화역', dirs:'하이파크 · 광성교회 방면' },
+  { no:'20675', name:'덕이중학교', dirs:'대화역 · 탄현역' },
+  { no:'20086', name:'대화역', dirs:'하이파크 · 광성교회' },
+  { no:'58306', name:'탄현역', dirs:'하이파크 방면' },
 ];
 const rno = (x) => x.no || x.id;
 const LIVE_URL = 'https://script.google.com/macros/s/AKfycbzVUADfsjRAPQJxMVhtHUcnL3Ju1MFbRHf4Tg3fFbYEXVdAUyExJjeTHiZxw4vz2x8W4A/exec';
+// ── 경의중앙선 탄현역 하행(서울역·덕소·지평 쪽) 시간표 · 환승 기준 ──
+const SUB_TT = {
+  wk: `05:28/서울역 05:32/팔당 05:42/용문 05:56/용문 06:05/서울역 06:15/용문 06:26/용문 06:32/서울역 06:37/용문 06:42*/팔당 06:48/덕소 06:53*/서울역 06:59*/팔당 07:04/서울역 07:08/용문 07:17/서울역 07:24/용산 07:30/팔당 07:34*/용문 07:40/서울역 07:51/지평 07:58/덕소 08:11/용문 08:18*/서울역 08:29/팔당 08:34*/서울역 08:46/용문 08:56/서울역 09:02/용문 09:17/용문 09:27/덕소 09:37/서울역 09:53/덕소 10:01/용문 10:21/덕소 10:36/서울역 10:50/덕소 11:04/용문 11:25/덕소 11:32/서울역 11:50/덕소 12:04/용문 12:20/덕소 12:32*/서울역 12:43/용문 13:02/덕소 13:12*/서울역 13:24/용문 13:35/덕소 13:46/지평 14:03/서울역 14:09/용문 14:24/덕소 14:46/지평 15:00/덕소 15:11*/서울역 15:25/용문 15:36/팔당 15:48/용문 16:00/덕소 16:11*/서울역 16:24/용문 16:33/덕소 16:41/용문 16:46*/서울역 16:52/용문 17:04/덕소 17:10/서울역 17:18/덕소 17:28/서울역 17:34/팔당 17:45/덕소 17:53/용산 18:03*/용문 18:08/서울역 18:15*/팔당 18:24/서울역 18:29/용문 18:35/덕소 18:43/용문 18:51/용문 18:58/덕소 19:03/서울역 19:26/용문 19:36/서울역 19:42/용문 19:56/지평 20:08/덕소 20:17/서울역 20:26/용문 20:39/용문 20:59/덕소 21:10/서울역 21:17*/용문 21:28/덕소 21:42/용문 21:53/덕소 22:19/덕소 22:25/서울역 22:34/덕소 23:00/청량리 23:11/서울역 23:23/청량리`,
+  we: `05:42/용문 05:58/서울역 06:17/지평 06:30/덕소 06:48/용문 06:56/덕소 07:04/서울역 07:17/지평 07:30/덕소 07:47/용문 08:02/덕소 08:13/용산 08:20/용문 08:30/서울역 08:44/덕소 08:54/용문 09:09/덕소 09:20/용문 09:28/덕소 09:47/용문 10:01/덕소 10:13/서울역 10:22/용문 10:32/덕소 10:45/용문 10:57/팔당 11:13/지평 11:33/덕소 11:46/용문 11:57/덕소 12:15/용문 12:30/덕소 12:47/용문 13:02/덕소 13:13/용문 13:35/덕소 13:46/용문 14:02/덕소 14:15/용문 14:31/팔당 14:38/용문 14:56/덕소 15:16/용문 15:38/덕소 15:48/용문 16:05/덕소 16:18/지평 16:34/덕소 16:46/용문 16:59/덕소 17:17/용문 17:28/덕소 17:40/용산 17:53/용문 18:04/덕소 18:20/용문 18:29/지평 18:39/덕소 18:55/덕소 19:20/용문 19:43/덕소 19:59/용문 20:12/덕소 20:25/용문 20:37/용문 20:52/덕소 21:04/용문 21:19/덕소 21:36/용문 21:55/용문 22:12/덕소 22:28/덕소 22:40/서울역 22:52/덕소 23:10/청량리 23:35/서울역`,
+};
+const SUBT = {}; for (const k in SUB_TT) SUBT[k] = SUB_TT[k].split(' ').map(x=>{ const [t,to]=x.split('/'); return { t:t.replace('*',''), express:t.endsWith('*'), to }; });
+const TRANSFER_MIN = 15;   // 덕이중학교 버스 탑승 → 탄현역 승강장 (버스 10분 + 도보 5분)
+const SUBLIVE = { data:null, at:0, err:false };
+const subName = (x) => x==='서울' ? '서울역' : x;
+async function pullSubway(){
+  if (!LIVE_URL || document.hidden || state.dir!=='tanhyeon') return;
+  try { const res = await fetch(`${LIVE_URL}?stop=subway`, { cache:'no-store' }); const j = await res.json();
+        if (!j.ok) throw new Error(j.error||'fail'); SUBLIVE.data = j; SUBLIVE.at = Date.now(); SUBLIVE.err = false; }
+  catch(e){ SUBLIVE.err = true; }
+  render();
+}
+// 시간표 열차에 실시간 위치를 짝지음 (같은 행선지 중 가장 이른 열차)
+function subwayRows(now){
+  const list = SUBT[now.dt].filter(x=>toMin(x.t) >= now.min-2).slice(0,6).map(x=>({...x}));
+  const live = SUBLIVE.data && Date.now()-SUBLIVE.at < 3*60e3 ? SUBLIVE.data.trains : [];
+  const extra = [];
+  live.forEach(tr=>{ const to = subName(tr.to); const m = list.find(x=>!x.live && x.to===to);
+    if (m) m.live = tr; else extra.push({ t:null, to, express:tr.express, live:tr }); });
+  return extra.concat(list);
+}
+const catchTrain = (busMin, dt) => SUBT[dt].find(x=>toMin(x.t) >= busMin + TRANSFER_MIN);
 const HOLIDAYS = ['2026-12-25','2027-01-01','2027-02-16','2027-02-17','2027-02-18','2027-03-01'];
 const $ = (id) => document.getElementById(id);
 const toMin = (t) => { const [h,m] = t.split(':').map(Number); return h*60+m; };
@@ -340,6 +393,7 @@ function upcoming(d, now){
   d.routes.forEach(id=>{ const rr = routeById(id); const lv = liveFor(rr);
     if (lv && lv.length) lv.forEach(b=>up.push({ rr, m:b.m, stops:b.stops, live:true }));
     else if (rr.freq) { const hw = headway(rr.freq[now.dt], now.min); if (hw) fq.push({ rr, hw }); }
+    else if (rr.liveOnly) fq.push({ rr, none:true });
     else rr[now.dt].filter(x=>x.l!=='o' && toMin(x.t)>=now.min).slice(0,3).forEach(x=>up.push({ rr, m:toMin(x.t)-now.min, t:x.t })); });
   up.sort((a,b)=>a.m-b.m);
   return { up, fq };
@@ -372,16 +426,32 @@ function render(){
       <div class="stopsaway${a.live?' on':''}">${a.live?'<i></i>':''}${where(a)}</div>
       <div class="say">${a.m<=1?'지금 곧 오는':`${a.m}분 후 오는`} <b>${rno(a.rr)}번</b> 타면 됩니다 · ${a.rr.to}</div>
       <div class="small num">도착 예정 ${timeOf(a, now)}${a.live?'':` · 남은 시간 ${(()=>{const l=Math.max(0,(toMin(a.t)-now.min)*60-now.sec);return String(l/60|0).padStart(2,'0')+':'+String(l%60).padStart(2,'0');})()}`}</div>
+      ${d.id==='tanhyeon' ? (()=>{ const busMin = a.t ? toMin(a.t) : now.min + a.m; const tr = catchTrain(busMin, now.dt);
+          return tr ? `<div class="transfer"><span class="ln">경의중앙</span>이 버스 타면 <b class="num">${tr.t} ${tr.to}행${tr.express?' (급)':''}</b> 탑승 가능<small>탄현역 승강장 도착 약 ${hm(busMin+TRANSFER_MIN)} · 버스 10분 + 도보 5분 기준</small></div>`
+                    : `<div class="transfer"><span class="ln">경의중앙</span>이 버스로는 오늘 탈 수 있는 서울역·지평 방향 열차가 없습니다.</div>`; })() : ''}
       <div class="pair">${[b,c].map((x,i)=> x ? `<div class="mini">
         <span class="k">${i?'다다음':'그 다음'}</span>
         <div class="mrow"><span class="midno" style="--rc:var(${x.rr.color})">${rno(x.rr)}</span><span class="midmin num">${mins(x)}</span></div>
-        <span class="s${x.live?' on':''}">${where(x)} · ${timeOf(x, now)}</span></div>`
+        <span class="s${x.live?' on':''}">${where(x)} · ${timeOf(x, now)}</span>${d.id==='tanhyeon' ? (()=>{ const tr = catchTrain(x.t ? toMin(x.t) : now.min + x.m, now.dt); return tr ? `<span class="x num">→ ${tr.t} ${tr.to}행 탑승</span>` : ''; })() : ''}</div>`
         : `<div class="mini"><span class="k">${i?'다다음':'그 다음'}</span><span class="s">정보 없음</span></div>`).join('')}</div>`;
   } else {
-    h += `<div class="empty">${fq.length ? '지금 실시간 정보가 없습니다. 아래 배차 간격을 참고하세요.' : '오늘 운행이 끝났거나 도착 정보가 없습니다.'}</div>`;
+    h += `<div class="empty">${fq.some(x=>!x.none) ? '지금 실시간 정보가 없습니다. 아래 배차 간격을 참고하세요.' : fq.length ? '지금 이 방향으로 오는 버스 정보가 없습니다.' : '오늘 운행이 끝났거나 도착 정보가 없습니다.'}</div>`;
   }
-  if (fq.length) h += `<div class="freqline">${fq.map(x=>`<div>${badge(x.rr,true)}<span>${x.rr.to} · 실시간 정보 없음 · 약 ${x.hw}분 간격으로 운행</span></div>`).join('')}</div>`;
+  if (fq.length) h += `<div class="freqline">${fq.map(x=>`<div>${badge(x.rr,true)}<span>${x.rr.to} · ${x.none ? '지금 도착 정보 없음' : `실시간 정보 없음 · 약 ${x.hw}분 간격으로 운행`}</span></div>`).join('')}</div>`;
   $('hero').innerHTML = h;
+
+  // 탄현역 지하철 (덕이중학교 → 탄현역 방면에서만)
+  $('subway').hidden = d.id!=='tanhyeon';
+  if (d.id==='tanhyeon') {
+    const rows = subwayRows(now), okMin = a ? (a.t ? toMin(a.t) : now.min + a.m) + TRANSFER_MIN : null;
+    const firstOk = okMin==null ? null : rows.find(y=>y.t && toMin(y.t) >= okMin);
+    $('subway').innerHTML = `<h3><span class="ln">경의중앙</span>탄현역 · 서울역/지평 방향</h3>
+      <div class="hint">${SUBLIVE.err ? '실시간 위치를 불러오지 못해 시간표만 보여줍니다.' : '시간표 + 실시간 위치'} · 초록 시각은 다음 버스로 탈 수 있는 열차</div>` +
+      (rows.length ? rows.map(x=>{ const m = x.t ? toMin(x.t)-now.min : null;
+        const st = x.live ? `<span class="st on">${x.live.msg}</span>` : `<span class="st num">${m<=0?'곧 출발':m+'분 후'}</span>`;
+        return `<div class="trow${x===firstOk?' ok':''}"><span class="tt num">${x.t||'—'}</span><span class="dst">${x.to}행${x.express?'<em>급행</em>':''}</span>${st}</div>`; }).join('')
+       : `<div class="trow"><span class="dst" style="grid-column:1/-1">오늘 남은 열차가 없습니다.</span></div>`);
+  }
 
   // 전체 시간표
   const dt = state.dt || now.dt, isToday = dt===now.dt;
@@ -397,7 +467,16 @@ function render(){
     : !lv.length ? `<span class="left">지금은 도착 정보가 없습니다.</span>`
     : lv.map(x=>`<b class="num">${x.m<=1?'곧 도착':`${x.m}분`}<small>${x.stops}정거장 전</small></b>`).join(''));
 
-  $('legend').hidden = !!r.freq;
+  $('legend').hidden = !!r.freq || !!r.liveOnly;
+  if (r.liveOnly) {
+    $('ttSub').textContent = '시간표 수집 중';
+    $('left').textContent = '실시간 전용';
+    $('stats').innerHTML = ''; $('grid').innerHTML = '';
+    $('note').innerHTML = `<p>${r.note}</p>`;
+    $('seg-wk').parentElement.hidden = true;
+    return;
+  }
+  $('seg-wk').parentElement.hidden = false;
   if (r.freq) {
     const F = r.freq[dt], hw = isToday ? headway(F, now.min) : null;
     $('ttSub').textContent = `하루 약 ${F.n}회`;
@@ -430,15 +509,16 @@ function render(){
 $('stops').addEventListener('click', e=>{ const b = e.target.closest('button[data-s]'); if(!b) return;
   const d = DIRS.find(x=>x.stop===b.dataset.s); state.stop = d.stop; state.dir = d.id; state.route = d.routes[0]; save(); render(); pullLive(); });
 $('dirs').addEventListener('click', e=>{ const b = e.target.closest('button[data-d]'); if(!b) return;
-  const d = DIRS.find(x=>x.id===b.dataset.d); state.dir = d.id; state.route = d.routes[0]; save(); render(); });
+  const d = DIRS.find(x=>x.id===b.dataset.d); state.dir = d.id; state.route = d.routes[0]; save(); render(); pullSubway(); });
 $('chips').addEventListener('click', e=>{ const b = e.target.closest('button[data-r]'); if(!b) return; state.route = b.dataset.r; save(); render(); });
 document.querySelector('.seg').addEventListener('click', e=>{ const b = e.target.closest('button[data-dt]'); if(!b) return;
   state.dt = b.dataset.dt===seoulNow().dt ? null : b.dataset.dt; render(); });
 
-render(); pullLive();
+render(); pullLive(); pullSubway();
 setInterval(render, 1000);
 setInterval(pullLive, 60000);
-document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) pullLive(); });
+setInterval(pullSubway, 60000);
+document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) { pullLive(); pullSubway(); } });
 
 // ── 설치 ──
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
