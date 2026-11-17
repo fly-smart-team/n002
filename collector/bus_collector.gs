@@ -24,7 +24,7 @@ const CONFIG = {
   TRIPS: [
     { group: 'deogi',      label: '덕이중학교',        stop: '20675', routes: ['074', '071', 'N002', '10'] },
     { group: 'daehwa',     label: '대화역 → 덕이동',   from: ['대화역'], to: '덕이', routes: ['10', 'N002', '67'] },
-    { group: 'tanhyeon',   label: '탄현역 → 덕이동(하이파크)', from: ['탄현역'], to: '덕이', routes: ['074', '071'] },
+    { group: 'tanhyeon',   label: '탄현역 → 덕이동',   from: ['탄현역'], to: '덕이', routes: ['074', '071'] },
     { group: 'gwangseong', label: '대화역 → 광성교회', from: ['대화역'], to: '광성교회', routes: ['80', '600', '1500'], maxAhead: 40 },
   ],
   MAX_AHEAD: 25,              // 출발 정류장에서 목적지까지 최대 정거장 수
@@ -56,29 +56,24 @@ function setup() {
     }
     trip.routes.forEach(routeNo => {
       const hit = findStopOnRoute_(routeNo, trip);
-      if (hit) addStation_(stations, hit, trip, [routeNo], routeNo);
+      if (hit) addStation_(stations, hit, trip, [routeNo]);
     });
   });
   const list = Object.keys(stations).map(k => stations[k]);
   props.setProperty('STATIONS', JSON.stringify(list));
-  // 추적 방식이 바뀌었으므로 이전 추적 상태는 비움 (잘못된 통과 기록 방지)
-  list.forEach(st => props.deleteProperty('STATE_' + st.no));
-  props.deleteProperty('STATE');
 
   const interval = intervalFor_(list.length);
   Logger.log('──────── 수집할 정류장 ────────');
-  list.forEach(st => Logger.log(`${st.no} ${st.name} (id ${st.id}) · ${st.groups.join(', ')} · 노선 ${st.routes.join(', ')}` +
-    (st.match ? ' · 방향 ' + Object.keys(st.match).map(k => `${k}=${st.match[k].seq}번째 정류장`).join(', ') : '')));
+  list.forEach(st => Logger.log(`${st.no} ${st.name} (id ${st.id}) · ${st.groups.join(', ')} · 노선 ${st.routes.join(', ')}`));
   Logger.log(`정류장 ${list.length}곳, 각 ${interval}분 간격 → 하루 약 ${Math.round(list.length * (CONFIG.ACTIVE_END - CONFIG.ACTIVE_START) / interval)}회`);
 
   const ss = SpreadsheetApp.getActive();
   sheet_(ss, RAW, ['시각', '요일', '노선', '차량1', '도착예정1(분)', '정류장전1',
-                   '차량2', '도착예정2(분)', '정류장전2', '정류장', '노선순번', '구간']);
-  sheet_(ss, PASS, ['날짜', '요일', '노선', '차량번호', '통과추정시각', '마지막관측시각', '마지막예정(분)', '정류장', '노선순번', '구간']);
-  [[RAW, 10, '정류장'], [RAW, 11, '노선순번'], [RAW, 12, '구간'],
-   [PASS, 8, '정류장'], [PASS, 9, '노선순번'], [PASS, 10, '구간']].forEach(([name, col, title]) => {
+                   '차량2', '도착예정2(분)', '정류장전2', '정류장']);
+  sheet_(ss, PASS, ['날짜', '요일', '노선', '차량번호', '통과추정시각', '마지막관측시각', '마지막예정(분)', '정류장']);
+  [[RAW, 10], [PASS, 8]].forEach(([name, col]) => {
     const sh = ss.getSheetByName(name);
-    if (!sh.getRange(1, col).getValue()) sh.getRange(1, col).setValue(title);
+    if (!sh.getRange(1, col).getValue()) sh.getRange(1, col).setValue('정류장');
   });
 
   ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
@@ -87,26 +82,10 @@ function setup() {
   poll(true);
 }
 
-function addStation_(stations, hit, trip, routes, routeNo) {
+function addStation_(stations, hit, trip, routes) {
   const st = stations[hit.id] || (stations[hit.id] = { no: hit.no, id: hit.id, name: hit.name, groups: [], routes: [] });
   if (st.groups.indexOf(trip.group) < 0) st.groups.push(trip.group);
   routes.forEach(r => { if (st.routes.indexOf(r) < 0) st.routes.push(r); });
-  // 같은 노선이 이 정류장을 양방향(상행·하행)으로 지나는 경우를 구분하기 위해 원하는 방향의 노선ID·순번을 기억
-  if (routeNo && hit.routeId) {
-    st.match = st.match || {};
-    st.match[normRoute_(routeNo)] = { routeId: String(hit.routeId), seq: Number(hit.seq), group: trip.group };
-  }
-}
-
-function normRoute_(x) { return String(x).trim().replace(/^0+/, ''); }
-
-// 이 도착정보가 우리가 원하는 방향인가? (방향 정보가 없는 노선은 그대로 통과)
-function matchOf_(st, b) {
-  const mt = st.match && st.match[normRoute_(b.routeName)];
-  if (!mt) return { keep: true, group: '' };
-  const sameRoute = !b.routeId || String(b.routeId) === mt.routeId;
-  const sameSeq = b.staOrder === undefined || b.staOrder === null || b.staOrder === '' || Number(b.staOrder) === mt.seq;
-  return { keep: sameRoute && sameSeq, group: sameRoute && sameSeq ? mt.group : '' };
 }
 
 function intervalFor_(n) {
@@ -134,7 +113,7 @@ function pollStation_(st, now) {
   const list = fetchArrivals_(st.id);
   if (list === null) return;
   // 웹 앱이 한도를 넘었을 때 쓸 수 있게 최근 수집 결과를 보관
-  CacheService.getScriptCache().put('poll_' + st.no, JSON.stringify({ t: now.getTime(), buses: compact_(list.filter(b => matchOf_(st, b).keep)) }), 21600);
+  CacheService.getScriptCache().put('poll_' + st.no, JSON.stringify({ t: now.getTime(), buses: compact_(list) }), 21600);
 
   const ss = SpreadsheetApp.getActive();
   const day = '일월화수목금토'[now.getDay()];
@@ -143,7 +122,7 @@ function pollStation_(st, now) {
   // 1) 원본 기록 (노선명은 문자열로 저장해 '074'의 앞자리 0 유지)
   const rows = list.map(b => [ts, day, "'" + String(b.routeName),
     b.plateNo1 || '', num_(b.predictTime1), num_(b.locationNo1),
-    b.plateNo2 || '', num_(b.predictTime2), num_(b.locationNo2), st.no, num_(b.staOrder), matchOf_(st, b).group]);
+    b.plateNo2 || '', num_(b.predictTime2), num_(b.locationNo2), st.no]);
   if (rows.length) {
     const sh = ss.getSheetByName(RAW);
     sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
@@ -155,25 +134,22 @@ function pollStation_(st, now) {
   const seenRoutes = {};
   const passRows = [];
 
-  // 같은 노선이 양방향으로 오면 노선순번(staOrder)으로 나눠서 따로 추적
   list.forEach(b => {
     const route = String(b.routeName);
-    const k = route + (num_(b.staOrder) !== '' ? '@' + num_(b.staOrder) : '');
-    seenRoutes[k] = true;
-    const prev = state[k];
-    const cur = { route, seq: num_(b.staOrder), group: matchOf_(st, b).group,
-                  plate: b.plateNo1 || '', predict: num_(b.predictTime1), t: now.getTime() };
+    seenRoutes[route] = true;
+    const prev = state[route];
+    const cur = { plate: b.plateNo1 || '', predict: num_(b.predictTime1), t: now.getTime() };
     if (prev && prev.plate && prev.plate !== cur.plate && prev.plate !== (b.plateNo2 || '')) {
       passRows.push(passRow_(route, prev, now, st.no));
     }
-    state[k] = cur;
+    state[route] = cur;
   });
 
   // 목록에서 노선 자체가 사라진 경우(도착정보 없음)도 통과로 처리
-  Object.keys(state).forEach(k => {
-    if (!seenRoutes[k] && state[k].plate) {
-      passRows.push(passRow_(state[k].route || k.split('@')[0], state[k], now, st.no));
-      state[k] = { route: state[k].route, seq: state[k].seq, group: state[k].group, plate: '', predict: '', t: now.getTime() };
+  Object.keys(state).forEach(route => {
+    if (!seenRoutes[route] && state[route].plate) {
+      passRows.push(passRow_(route, state[route], now, st.no));
+      state[route] = { plate: '', predict: '', t: now.getTime() };
     }
   });
 
@@ -208,7 +184,7 @@ function doGet(e) {
     if (list !== null) {
       props.setProperty(dayKey, String(used + 1));
       const json = JSON.stringify({ stop: no, name: st.name, ok: true, age: 0,
-        updated: Utilities.formatDate(new Date(), 'Asia/Seoul', "yyyy-MM-dd'T'HH:mm:ssXXX"), buses: compact_(list.filter(b => matchOf_(st, b).keep)) });
+        updated: Utilities.formatDate(new Date(), 'Asia/Seoul', "yyyy-MM-dd'T'HH:mm:ssXXX"), buses: compact_(list) });
       cache.put('live_' + no, json, CONFIG.LIVE_CACHE_SEC);
       return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
     }
@@ -224,7 +200,6 @@ function compact_(list) {
     route: String(b.routeName),
     predict1: num_(b.predictTime1), stops1: num_(b.locationNo1),
     predict2: num_(b.predictTime2), stops2: num_(b.locationNo2),
-    dest: b.routeDestName || '',
   }));
 }
 
@@ -274,7 +249,7 @@ function findStopOnRoute_(routeNo, trip) {
         if (String(sts[i].stationName).indexOf(name) < 0) continue;
         for (let j = i + 1; j < Math.min(sts.length, i + 1 + maxAhead); j++) {
           if (String(sts[j].stationName).indexOf(trip.to) >= 0) {
-            if (!best || j - i < best.n) best = { s: sts[i], t: sts[j], n: j - i, routeId: r.routeId };
+            if (!best || j - i < best.n) best = { s: sts[i], t: sts[j], n: j - i };
             break;
           }
         }
@@ -282,8 +257,7 @@ function findStopOnRoute_(routeNo, trip) {
     }
     if (best) {
       Logger.log(`[${trip.label}] 노선 ${routeNo}: ${best.s.stationName} (${best.s.mobileNo}) → ${best.n}정거장 뒤 ${best.t.stationName}`);
-      return { no: String(best.s.mobileNo).trim(), id: String(best.s.stationId), name: best.s.stationName,
-               routeId: String(best.routeId), seq: Number(best.s.stationSeq) };
+      return { no: String(best.s.mobileNo).trim(), id: String(best.s.stationId), name: best.s.stationName };
     }
   }
   // 못 찾았을 때: 경로에 출발지·목적지 이름이 있는지 보여줌
@@ -319,8 +293,6 @@ function passRow_(route, prev, now, stopNo) {
     Utilities.formatDate(new Date(prev.t), 'Asia/Seoul', 'HH:mm'),
     prev.predict,
     stopNo,
-    prev.seq === undefined ? '' : prev.seq,
-    prev.group || '',
   ];
 }
 
